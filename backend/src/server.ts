@@ -1,8 +1,7 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
-
-dotenv.config();
+import { pool } from "./config/database";
 
 const app = express();
 
@@ -17,6 +16,13 @@ app.get("/", (_req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
+
+  try {
+    await pool.query("SELECT NOW()");
+    console.log("PostgreSQL connected successfully");
+  } catch (error) {
+    console.error("PostgreSQL connection failed:", error);
+  }
 });
