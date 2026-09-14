@@ -150,3 +150,72 @@ export async function getCurrentUser(token: string): Promise<CurrentUserResponse
     },
   });
 }
+
+import type {
+  PortfolioFormData,
+  PortfolioResponse,
+  PortfoliosResponse,
+} from "@/types/portfolio";
+
+/**
+ * Creates a new portfolio for the authenticated user (POST /api/portfolios)
+ */
+export async function createPortfolio(
+  data: PortfolioFormData,
+  token: string
+): Promise<PortfolioResponse> {
+  return request<PortfolioResponse>("/api/portfolios", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Retrieves a single portfolio by ID for the authenticated user (GET /api/portfolios/:id)
+ */
+export async function getPortfolio(
+  id: string,
+  token: string
+): Promise<PortfolioResponse> {
+  return request<PortfolioResponse>(`/api/portfolios/${encodeURIComponent(id)}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+/**
+ * Updates an existing portfolio belonging to the authenticated user (PUT /api/portfolios/:id)
+ */
+export async function updatePortfolio(
+  id: string,
+  data: Partial<PortfolioFormData>,
+  token: string
+): Promise<PortfolioResponse> {
+  return request<PortfolioResponse>(`/api/portfolios/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Retrieves all portfolios belonging to the authenticated user (GET /api/portfolios)
+ */
+export async function getPortfolios(
+  token: string
+): Promise<PortfoliosResponse> {
+  return request<PortfoliosResponse>("/api/portfolios", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+

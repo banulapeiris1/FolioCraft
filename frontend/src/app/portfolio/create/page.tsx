@@ -1,16 +1,23 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { FolioCraftLogo } from "@/components/landing/icons";
 import PortfolioForm from "@/components/portfolio/PortfolioForm";
 import { SparklesIcon } from "@/components/portfolio/PortfolioIcons";
+import { createPortfolio, ApiError } from "@/lib/api";
+import { PortfolioFormData } from "@/types/portfolio";
 
 export default function CreatePortfolioPage() {
   const router = useRouter();
-  const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const { user, token, isLoading, isAuthenticated, logout } = useAuth();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [serverFieldErrors, setServerFieldErrors] = useState<Record<string, string>>({});
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -39,6 +46,47 @@ export default function CreatePortfolioPage() {
   const handleLogout = () => {
     logout();
     router.replace("/login");
+  };
+
+  const handleCreate = async (formData: PortfolioFormData) => {
+    if (!token) {
+      setServerError("Your session has expired. Please log in again.");
+      router.replace("/login");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setServerError(null);
+    setServerFieldErrors({});
+    setSuccessMessage(null);
+
+    try {
+      const response = await createPortfolio(formData, token);
+      setSuccessMessage("Portfolio created successfully! Redirecting to editor...");
+      router.push(`/portfolio/edit/${response.portfolio.id}`);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setServerError("Your session has expired. Please log in again.");
+          router.replace("/login");
+          return;
+        }
+        if (err.status === 409) {
+          setServerFieldErrors({ username: "Username is already taken" });
+          setServerError("Username is already taken. Please choose a different portfolio handle.");
+          return;
+        }
+        if (err.status === 400) {
+          setServerError(err.message || "Invalid portfolio information provided.");
+          return;
+        }
+        setServerError(err.message || "An unexpected server error occurred. Please try again.");
+      } else {
+        setServerError("Unable to connect to the server. Please check your internet connection.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -102,6 +150,14 @@ export default function CreatePortfolioPage() {
           </p>
         </div>
 
+        {/* Success Feedback Banner */}
+        {successMessage && (
+          <div className="mb-6 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 animate-fadeIn flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <p className="text-sm font-semibold text-emerald-900">{successMessage}</p>
+          </div>
+        )}
+
         {/* Portfolio Form in Create Mode */}
         <PortfolioForm
           mode="create"
@@ -110,6 +166,10 @@ export default function CreatePortfolioPage() {
             email: user.email || "",
             template: "modern",
           }}
+          isSubmitting={isSubmitting}
+          serverError={serverError}
+          serverFieldErrors={serverFieldErrors}
+          onSubmit={handleCreate}
           onCancel={() => router.push("/dashboard")}
         />
       </main>

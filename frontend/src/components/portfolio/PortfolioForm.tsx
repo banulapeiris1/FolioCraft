@@ -14,7 +14,6 @@ import {
   GlobeIcon,
   SparklesIcon,
   AlertCircleIcon,
-  CheckCircleIcon,
 } from "./PortfolioIcons";
 
 const TEMPLATES: TemplateOption[] = [
@@ -42,6 +41,8 @@ export interface PortfolioFormProps {
   onSubmit?: (data: PortfolioFormData) => void;
   onCancel?: () => void;
   isSubmitting?: boolean;
+  serverError?: string | null;
+  serverFieldErrors?: Record<string, string>;
 }
 
 function getInitialFormData(initialData: Partial<PortfolioFormData> = {}): PortfolioFormData {
@@ -71,6 +72,8 @@ export default function PortfolioForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  serverError = null,
+  serverFieldErrors = {},
 }: PortfolioFormProps) {
   const [prevInitialData, setPrevInitialData] = useState(initialData);
   const [formData, setFormData] = useState<PortfolioFormData>(() =>
@@ -86,7 +89,6 @@ export default function PortfolioForm({
   const [errors, setErrors] = useState<PortfolioFormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [imageLoadError, setImageLoadError] = useState(false);
-  const [validatedDataPreview, setValidatedDataPreview] = useState<PortfolioFormData | null>(null);
 
   const validateField = (name: keyof PortfolioFormData, value: unknown): string | undefined => {
     switch (name) {
@@ -238,37 +240,20 @@ export default function PortfolioForm({
 
     if (onSubmit) {
       onSubmit(payload);
-    } else {
-      // For PORTFOLIO-06 without API integration, display verified payload preview
-      setValidatedDataPreview(payload);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-8">
-      {/* Dev preview alert for PORTFOLIO-06 */}
-      {validatedDataPreview && (
-        <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-5 animate-fadeIn">
-          <div className="flex items-start gap-3">
-            <CheckCircleIcon className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h4 className="text-sm font-bold text-emerald-900">
-                Form validated successfully! (Ready for PORTFOLIO-07 API Integration)
-              </h4>
-              <p className="text-xs text-emerald-700 mt-1">
-                The client data model is valid and structured for the backend. In PORTFOLIO-07, this will trigger the HTTP {mode === "create" ? "POST /api/portfolios" : "PUT /api/portfolios/:id"} endpoint.
-              </p>
-              <pre className="mt-3 p-3 rounded-xl bg-white/80 border border-emerald-200 text-[11px] font-mono text-emerald-900 overflow-x-auto max-h-48">
-                {JSON.stringify(validatedDataPreview, null, 2)}
-              </pre>
-            </div>
-            <button
-              type="button"
-              onClick={() => setValidatedDataPreview(null)}
-              className="text-emerald-700 hover:text-emerald-900 text-xs font-semibold"
-            >
-              Dismiss
-            </button>
+      {/* Server Error Alert Banner */}
+      {serverError && (
+        <div className="rounded-2xl bg-rose-50 border border-rose-200 p-4 animate-fadeIn flex items-start gap-3">
+          <AlertCircleIcon className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h4 className="text-sm font-bold text-rose-900">
+              {mode === "create" ? "Unable to create portfolio" : "Unable to save portfolio changes"}
+            </h4>
+            <p className="text-xs text-rose-700 mt-0.5 leading-relaxed">{serverError}</p>
           </div>
         </div>
       )}
@@ -640,48 +625,60 @@ export default function PortfolioForm({
         </div>
 
         {/* Username */}
-        <div className="space-y-2 mb-8">
-          <label
-            htmlFor="portfolio-username"
-            className="block text-xs font-semibold text-[#0f172a] uppercase tracking-wider"
-          >
-            Portfolio Username (Handle) <span className="text-[#6e56cf]">*</span>
-          </label>
-          <div className="flex items-center rounded-xl border border-[#eae6f5] bg-[#fbfaff] focus-within:bg-white focus-within:border-[#6e56cf] focus-within:ring-2 focus-within:ring-[#6e56cf]/20 overflow-hidden">
-            <span className="px-3.5 py-2.5 text-xs font-mono text-[#64748b] bg-[#f4f2fa] border-r border-[#eae6f5] select-none">
-              foliocraft.dev/u/
-            </span>
-            <input
-              id="portfolio-username"
-              type="text"
-              required
-              value={formData.username}
-              onChange={(e) => handleChange("username", e.target.value.toLowerCase())}
-              onBlur={() => handleBlur("username")}
-              placeholder="yourusername"
-              aria-invalid={Boolean(errors.username)}
-              aria-describedby={errors.username ? "username-error" : "username-hint"}
-              className="flex-1 px-3.5 py-2.5 text-sm text-[#0f172a] placeholder-[#94a3b8] bg-transparent focus:outline-none"
-            />
-          </div>
+        {(() => {
+          const usernameErrMsg = errors.username || serverFieldErrors?.username;
+          return (
+            <div className="space-y-2 mb-8">
+              <label
+                htmlFor="portfolio-username"
+                className="block text-xs font-semibold text-[#0f172a] uppercase tracking-wider"
+              >
+                Portfolio Username (Handle) <span className="text-[#6e56cf]">*</span>
+              </label>
+              <div
+                className={`flex items-center rounded-xl border bg-[#fbfaff] focus-within:bg-white overflow-hidden transition-all ${
+                  usernameErrMsg
+                    ? "border-[#f87171] focus-within:border-[#ef4444] focus-within:ring-2 focus-within:ring-[#ef4444]/20"
+                    : "border-[#eae6f5] focus-within:border-[#6e56cf] focus-within:ring-2 focus-within:ring-[#6e56cf]/20"
+                }`}
+              >
+                <span className="px-3.5 py-2.5 text-xs font-mono text-[#64748b] bg-[#f4f2fa] border-r border-[#eae6f5] select-none">
+                  foliocraft.dev/u/
+                </span>
+                <input
+                  id="portfolio-username"
+                  type="text"
+                  required
+                  disabled={isSubmitting}
+                  value={formData.username}
+                  onChange={(e) => handleChange("username", e.target.value.toLowerCase())}
+                  onBlur={() => handleBlur("username")}
+                  placeholder="yourusername"
+                  aria-invalid={Boolean(usernameErrMsg)}
+                  aria-describedby={usernameErrMsg ? "username-error" : "username-hint"}
+                  className="flex-1 px-3.5 py-2.5 text-sm text-[#0f172a] placeholder-[#94a3b8] bg-transparent focus:outline-none disabled:opacity-50"
+                />
+              </div>
 
-          <div className="flex items-center justify-between text-xs">
-            <span id="username-hint" className="text-[#64748b]">
-              Your public URL:{" "}
-              <strong className="text-[#6e56cf] font-mono">
-                /u/{formData.username || "yourname"}
-              </strong>
-            </span>
-            <span className="text-[11px] text-[#94a3b8]">1-50 chars (a-z, 0-9, -, _)</span>
-          </div>
+              <div className="flex items-center justify-between text-xs">
+                <span id="username-hint" className="text-[#64748b]">
+                  Your public URL:{" "}
+                  <strong className="text-[#6e56cf] font-mono">
+                    /u/{formData.username || "yourname"}
+                  </strong>
+                </span>
+                <span className="text-[11px] text-[#94a3b8]">1-50 chars (a-z, 0-9, -, _)</span>
+              </div>
 
-          {errors.username && (
-            <p id="username-error" className="flex items-center gap-1.5 text-xs text-[#dc2626] font-medium mt-1">
-              <AlertCircleIcon className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>{errors.username}</span>
-            </p>
-          )}
-        </div>
+              {usernameErrMsg && (
+                <p id="username-error" className="flex items-center gap-1.5 text-xs text-[#dc2626] font-medium mt-1">
+                  <AlertCircleIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{usernameErrMsg}</span>
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Template Selection */}
         <div className="space-y-3">
@@ -754,7 +751,7 @@ export default function PortfolioForm({
           className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-md shadow-[#6e56cf]/25 hover:shadow-lg hover:shadow-[#6e56cf]/35 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isSubmitting ? (
-            <span>Saving...</span>
+            <span>{mode === "create" ? "Creating Portfolio..." : "Saving Changes..."}</span>
           ) : mode === "create" ? (
             <span>Create Portfolio</span>
           ) : (

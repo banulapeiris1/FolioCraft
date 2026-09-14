@@ -1,4 +1,4 @@
-// Frontend Portfolio Types (PORTFOLIO-06)
+// Frontend Portfolio Types (PORTFOLIO-06 & PORTFOLIO-07)
 
 export type SocialLinks = Record<string, string>;
 
@@ -17,6 +17,41 @@ export interface PortfolioFormData {
   socialLinks?: SocialLinks;
   username: string;
   template?: string;
+}
+
+/**
+ * Full portfolio entity model returned from the backend.
+ */
+export interface Portfolio {
+  id: string;
+  userId: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  location: string | null;
+  title: string;
+  about: string | null;
+  profileImageUrl: string | null;
+  socialLinks: SocialLinks;
+  username: string;
+  template: string;
+  published: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * API response format for single portfolio endpoints.
+ */
+export interface PortfolioResponse {
+  portfolio: Portfolio;
+}
+
+/**
+ * API response format for portfolio collection endpoints.
+ */
+export interface PortfoliosResponse {
+  portfolios: Portfolio[];
 }
 
 /**
