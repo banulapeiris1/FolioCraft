@@ -1,13 +1,8 @@
 import React from "react";
 import {
-  BriefcaseIcon,
-  CheckCircleIcon,
   CheckIcon,
-  CodeIcon,
-  GraduationCapIcon,
   RefreshCwIcon,
   SlidersIcon,
-  UserIcon,
 } from "./icons";
 
 const checklistItems = [
