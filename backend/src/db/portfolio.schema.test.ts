@@ -37,13 +37,19 @@ test("PORTFOLIO-01: Database Schema & Migration Verification Suite", async (t) =
     );
     const columns = new Map(res.rows.map((row) => [row.column_name, row]));
 
-    // Required columns according to formal database design
+    // Required columns according to finalized database design
     const expectedCols = [
       "id",
       "user_id",
-      "username",
+      "name",
+      "email",
+      "phone",
+      "location",
       "title",
       "about",
+      "profile_image_url",
+      "social_links",
+      "username",
       "template",
       "published",
       "created_at",
@@ -63,9 +69,21 @@ test("PORTFOLIO-01: Database Schema & Migration Verification Suite", async (t) =
     assert.equal(userIdCol.data_type, "uuid", "user_id should be UUID");
     assert.equal(userIdCol.is_nullable, "NO", "user_id must be NOT NULL");
 
-    const usernameCol = columns.get("username");
-    assert.equal(usernameCol.data_type, "character varying", "username should be VARCHAR");
-    assert.equal(usernameCol.is_nullable, "NO", "username must be NOT NULL");
+    const nameCol = columns.get("name");
+    assert.equal(nameCol.data_type, "character varying", "name should be VARCHAR");
+    assert.equal(nameCol.is_nullable, "NO", "name must be NOT NULL");
+
+    const emailCol = columns.get("email");
+    assert.equal(emailCol.data_type, "character varying", "email should be VARCHAR");
+    assert.equal(emailCol.is_nullable, "YES", "email can be NULL");
+
+    const phoneCol = columns.get("phone");
+    assert.equal(phoneCol.data_type, "character varying", "phone should be VARCHAR");
+    assert.equal(phoneCol.is_nullable, "YES", "phone can be NULL");
+
+    const locationCol = columns.get("location");
+    assert.equal(locationCol.data_type, "character varying", "location should be VARCHAR");
+    assert.equal(locationCol.is_nullable, "YES", "location can be NULL");
 
     const titleCol = columns.get("title");
     assert.equal(titleCol.data_type, "character varying", "title should be VARCHAR");
@@ -74,6 +92,18 @@ test("PORTFOLIO-01: Database Schema & Migration Verification Suite", async (t) =
     const aboutCol = columns.get("about");
     assert.equal(aboutCol.data_type, "text", "about should be TEXT");
     assert.equal(aboutCol.is_nullable, "YES", "about can be NULL");
+
+    const profileImageUrlCol = columns.get("profile_image_url");
+    assert.equal(profileImageUrlCol.data_type, "text", "profile_image_url should be TEXT");
+    assert.equal(profileImageUrlCol.is_nullable, "YES", "profile_image_url can be NULL");
+
+    const socialLinksCol = columns.get("social_links");
+    assert.equal(socialLinksCol.data_type, "jsonb", "social_links should be JSONB");
+    assert.equal(socialLinksCol.is_nullable, "YES", "social_links can be NULL or default");
+
+    const usernameCol = columns.get("username");
+    assert.equal(usernameCol.data_type, "character varying", "username should be VARCHAR");
+    assert.equal(usernameCol.is_nullable, "NO", "username must be NOT NULL");
 
     const templateCol = columns.get("template");
     assert.equal(templateCol.data_type, "character varying", "template should be VARCHAR");
@@ -132,7 +162,22 @@ test("PORTFOLIO-01: Database Schema & Migration Verification Suite", async (t) =
     assert.equal(fk.delete_rule, "CASCADE");
   });
 
-  await t.test("5. insert portfolio with user_id succeeds and establishes UUID relationship", async () => {
+  await t.test("5. username has UNIQUE constraint configured", async () => {
+    const res = await pool.query(
+      `SELECT kcu.column_name
+       FROM information_schema.table_constraints tc
+       JOIN information_schema.key_column_usage kcu
+         ON tc.constraint_name = kcu.constraint_name
+         AND tc.table_schema = kcu.table_schema
+       WHERE tc.constraint_type = 'UNIQUE'
+         AND tc.table_name = 'portfolios'
+         AND tc.table_schema = 'public'`
+    );
+    const uniqueCols = res.rows.map((r) => r.column_name);
+    assert.ok(uniqueCols.includes("username"), "Expected portfolios table to have UNIQUE constraint on username");
+  });
+
+  await t.test("6. insert portfolio with all basic info fields succeeds with JSONB social_links", async () => {
     // Create a test user
     const userInsert = await pool.query(
       `INSERT INTO users (name, email, password_hash)
@@ -143,12 +188,34 @@ test("PORTFOLIO-01: Database Schema & Migration Verification Suite", async (t) =
     testUserId = userInsert.rows[0].id;
     assert.ok(testUserId, "Test user ID must be generated");
 
-    // Insert portfolio for this user
+    const socialLinks = {
+      github: "https://github.com/alexchen",
+      linkedin: "https://linkedin.com/in/alexchen",
+      twitter: "https://twitter.com/alexchen",
+    };
+
+    // Insert portfolio for this user with all basic info fields
     const portfolioInsert = await pool.query(
-      `INSERT INTO portfolios (user_id, username, title, about)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, user_id, username, title, about, template, published, created_at, updated_at`,
-      [testUserId, `alex_${uniqueTag}`, "Senior Cloud Engineer", "Passionate about cloud-native systems"]
+      `INSERT INTO portfolios (
+         user_id, name, email, phone, location, title, about,
+         profile_image_url, social_links, username, template, published
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING *`,
+      [
+        testUserId,
+        "Alex Chen",
+        "alex.portfolio@example.com",
+        "+1 (555) 234-5678",
+        "San Francisco, CA",
+        "Senior Cloud Engineer",
+        "Passionate about cloud-native systems and modern architectures.",
+        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+        JSON.stringify(socialLinks),
+        `alex_${uniqueTag}`,
+        "modern",
+        false,
+      ]
     );
 
     assert.equal(portfolioInsert.rows.length, 1);
@@ -156,16 +223,45 @@ test("PORTFOLIO-01: Database Schema & Migration Verification Suite", async (t) =
     testPortfolioId = created.id;
 
     assert.equal(created.user_id, testUserId);
-    assert.equal(created.username, `alex_${uniqueTag}`);
+    assert.equal(created.name, "Alex Chen");
+    assert.equal(created.email, "alex.portfolio@example.com");
+    assert.equal(created.phone, "+1 (555) 234-5678");
+    assert.equal(created.location, "San Francisco, CA");
     assert.equal(created.title, "Senior Cloud Engineer");
-    assert.equal(created.about, "Passionate about cloud-native systems");
+    assert.equal(created.about, "Passionate about cloud-native systems and modern architectures.");
+    assert.equal(
+      created.profile_image_url,
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
+    );
+    assert.deepEqual(created.social_links, socialLinks);
+    assert.equal(created.username, `alex_${uniqueTag}`);
     assert.equal(created.template, "modern");
     assert.equal(created.published, false);
     assert.ok(created.created_at instanceof Date);
     assert.ok(created.updated_at instanceof Date);
   });
 
-  await t.test("6. ON DELETE CASCADE removes portfolio when user is deleted", async () => {
+  await t.test("7. duplicate username is rejected at the database level by UNIQUE constraint", async () => {
+    assert.ok(testUserId);
+    const duplicateUsername = `alex_${uniqueTag}`;
+
+    let duplicateError: { code?: string } | null = null;
+    try {
+      await pool.query(
+        `INSERT INTO portfolios (user_id, name, title, username)
+         VALUES ($1, $2, $3, $4)`,
+        [testUserId, "Another Alex", "Tech Lead", duplicateUsername]
+      );
+    } catch (err: unknown) {
+      duplicateError = err as { code?: string };
+    }
+
+    assert.ok(duplicateError, "Expected duplicate username insert to throw error");
+    // PostgreSQL error code 23505 is unique_violation
+    assert.equal(duplicateError.code, "23505", "Expected PostgreSQL error code 23505 (unique_violation)");
+  });
+
+  await t.test("8. ON DELETE CASCADE removes portfolio when user is deleted", async () => {
     assert.ok(testUserId);
     assert.ok(testPortfolioId);
 
@@ -181,3 +277,4 @@ test("PORTFOLIO-01: Database Schema & Migration Verification Suite", async (t) =
     testPortfolioId = null;
   });
 });
+

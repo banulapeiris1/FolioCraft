@@ -22,14 +22,39 @@ DROP INDEX IF EXISTS idx_users_email;
 CREATE TABLE IF NOT EXISTS portfolios (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    username VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    location VARCHAR(255),
     title VARCHAR(255) NOT NULL,
     about TEXT,
+    profile_image_url TEXT,
+    social_links JSONB DEFAULT '{}'::jsonb,
+    username VARCHAR(255) NOT NULL UNIQUE,
     template VARCHAR(100) DEFAULT 'modern',
     published BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Safe incremental alterations if portfolios table was already created previously
+ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS name VARCHAR(255) NOT NULL DEFAULT '';
+ALTER TABLE portfolios ALTER COLUMN name DROP DEFAULT;
+ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS location VARCHAR(255);
+ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
+ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}'::jsonb;
+
+-- Ensure UNIQUE constraint on username if not already present
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'portfolios_username_key'
+    ) THEN
+        ALTER TABLE portfolios ADD CONSTRAINT portfolios_username_key UNIQUE (username);
+    END IF;
+END $$;
 
 -- Index foreign key user_id for efficient user portfolio queries
 CREATE INDEX IF NOT EXISTS idx_portfolios_user_id ON portfolios(user_id);
