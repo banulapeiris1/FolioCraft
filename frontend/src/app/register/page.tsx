@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AuthLayout from "@/components/auth/AuthLayout";
 import AuthCard from "@/components/auth/AuthCard";
 import AuthInput from "@/components/auth/AuthInput";
@@ -9,13 +10,21 @@ import PasswordInput from "@/components/auth/PasswordInput";
 import PasswordStrengthMeter from "@/components/auth/PasswordStrengthMeter";
 import SocialAuthButton from "@/components/auth/SocialAuthButton";
 import AuthDivider from "@/components/auth/AuthDivider";
-import { MailIcon, UserIcon, SparklesIcon } from "@/components/auth/AuthIcons";
+import { MailIcon, UserIcon, SparklesIcon, AlertCircleIcon } from "@/components/auth/AuthIcons";
+import { useAuth } from "@/context/AuthContext";
+import { registerUser, ApiError } from "@/lib/api";
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+
   const [errors, setErrors] = useState<{
     name?: string;
     email?: string;
@@ -23,8 +32,17 @@ export default function RegisterPage() {
     terms?: string;
   }>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      router.replace("/dashboard");
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError(null);
+
     const newErrors: {
       name?: string;
       email?: string;
@@ -38,7 +56,7 @@ export default function RegisterPage() {
 
     if (!email.trim()) {
       newErrors.email = "Please enter your email address.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       newErrors.email = "Please enter a valid email address.";
     }
 
@@ -54,8 +72,33 @@ export default function RegisterPage() {
 
     setErrors(newErrors);
 
-    if (Object.keys(newErrors).length === 0) {
-      // Client-side UI only — No backend integration in this phase
+    if (Object.keys(newErrors).length > 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await registerUser({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+      });
+
+      login(response.token, response.user);
+      router.push("/dashboard");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 409) {
+          setServerError("An account with this email address already exists. Please sign in instead.");
+        } else {
+          setServerError(err.message || "Registration failed. Please check your information and try again.");
+        }
+      } else {
+        setServerError("Unable to connect to the server. Please check your internet connection.");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -71,12 +114,32 @@ export default function RegisterPage() {
         <SocialAuthButton
           label="Sign up with GitHub"
           onClick={() => {
-            // Visual element only — GitHub OAuth is not connected
+            // Visual element only — GitHub OAuth is not in scope
           }}
         />
 
         {/* Divider */}
         <AuthDivider label="OR REGISTER WITH EMAIL" />
+
+        {/* Server Error Banner */}
+        {serverError && (
+          <div
+            className="mb-4 p-3 rounded-xl bg-[#fef2f2] border border-[#fecaca] text-[#b91c1c] text-xs font-medium flex items-start gap-2 animate-fadeIn"
+            role="alert"
+          >
+            <AlertCircleIcon className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <span>{serverError}</span>
+              {serverError.includes("already exists") && (
+                <div className="mt-1">
+                  <Link href="/login" className="font-semibold underline hover:text-[#991b1b]">
+                    Go to Sign In →
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Register Form */}
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -87,6 +150,7 @@ export default function RegisterPage() {
             label="Full name"
             placeholder="Alex Chen"
             value={name}
+            disabled={isSubmitting}
             onChange={(e) => {
               setName(e.target.value);
               if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
@@ -104,9 +168,11 @@ export default function RegisterPage() {
             label="Work email"
             placeholder="alex.chen@example.com"
             value={email}
+            disabled={isSubmitting}
             onChange={(e) => {
               setEmail(e.target.value);
               if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+              if (serverError) setServerError(null);
             }}
             error={errors.email}
             leftIcon={<MailIcon className="w-4 h-4" />}
@@ -121,6 +187,7 @@ export default function RegisterPage() {
               label="Password"
               placeholder="Create a secure password"
               value={password}
+              disabled={isSubmitting}
               onChange={(e) => {
                 setPassword(e.target.value);
                 if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
@@ -144,6 +211,7 @@ export default function RegisterPage() {
                 name="agree-terms"
                 type="checkbox"
                 checked={agreeTerms}
+                disabled={isSubmitting}
                 onChange={(e) => {
                   setAgreeTerms(e.target.checked);
                   if (errors.terms) setErrors((prev) => ({ ...prev, terms: undefined }));
@@ -173,9 +241,12 @@ export default function RegisterPage() {
           {/* Primary CTA */}
           <button
             type="submit"
-            className="w-full mt-2 py-2.5 px-4 rounded-xl bg-[#6e56cf] hover:bg-[#5d46be] text-white text-sm font-semibold shadow-md shadow-[#6e56cf]/20 hover:shadow-lg hover:shadow-[#6e56cf]/30 active:scale-[0.99] transition-all focus:outline-none focus:ring-2 focus:ring-[#6e56cf]/50 cursor-pointer"
+            disabled={isSubmitting}
+            className={`w-full mt-2 py-2.5 px-4 rounded-xl bg-[#6e56cf] hover:bg-[#5d46be] text-white text-sm font-semibold shadow-md shadow-[#6e56cf]/20 hover:shadow-lg hover:shadow-[#6e56cf]/30 active:scale-[0.99] transition-all focus:outline-none focus:ring-2 focus:ring-[#6e56cf]/50 cursor-pointer ${
+              isSubmitting ? "opacity-75 cursor-not-allowed" : ""
+            }`}
           >
-            Create free account
+            {isSubmitting ? "Creating account..." : "Create free account"}
           </button>
         </form>
 
