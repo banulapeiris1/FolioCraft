@@ -1,11 +1,8 @@
 import React from "react";
 import {
-  ArrowRightIcon,
   ExternalLinkIcon,
   GithubIcon,
-  GlobeIcon,
   LockIcon,
-  SparklesIcon,
 } from "./icons";
 
 export default function DigitalPresenceSection() {

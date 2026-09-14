@@ -2,8 +2,6 @@ import React from "react";
 import {
   EyeIcon,
   GlobeIcon,
-  RocketIcon,
-  ShieldCheckIcon,
   SlidersIcon,
   UploadCloudIcon,
 } from "./icons";

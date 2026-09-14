@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { FolioCraftLogo, MenuIcon, XIcon } from "./icons";
 
 export default function Navbar() {
@@ -17,8 +18,8 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 w-full bg-[#faf9fd]/85 backdrop-blur-md border-b border-[#eae6f5] transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
-        <a
-          href="#"
+        <Link
+          href="/"
           className="flex items-center gap-2.5 group focus:outline-none focus:ring-2 focus:ring-[#6e56cf]/40 rounded-lg p-1"
           aria-label="FolioCraft Home"
         >
@@ -26,7 +27,7 @@ export default function Navbar() {
           <span className="text-xl font-bold tracking-tight text-[#0f172a] font-sans">
             Folio<span className="text-[#6e56cf]">Craft</span>
           </span>
-        </a>
+        </Link>
 
         {/* Desktop Navigation */}
         <nav
@@ -46,18 +47,18 @@ export default function Navbar() {
 
         {/* Desktop Right CTA */}
         <div className="hidden md:flex items-center gap-4">
-          <a
-            href="#login-mock"
+          <Link
+            href="/login"
             className="text-sm font-medium text-[#475569] hover:text-[#0f172a] px-3 py-2 rounded-lg transition-colors"
           >
             Log in
-          </a>
-          <a
-            href="#cta"
+          </Link>
+          <Link
+            href="/register"
             className="text-sm font-medium text-white bg-[#6e56cf] hover:bg-[#5d46be] px-4 py-2 rounded-lg shadow-sm shadow-[#6e56cf]/25 transition-all hover:shadow-md hover:shadow-[#6e56cf]/30 active:scale-[0.98]"
           >
             Create my portfolio
-          </a>
+          </Link>
         </div>
 
         {/* Mobile Hamburger Button */}
@@ -89,20 +90,20 @@ export default function Navbar() {
             ))}
           </nav>
           <div className="pt-4 border-t border-[#eae6f5] flex flex-col gap-2.5">
-            <a
-              href="#login-mock"
+            <Link
+              href="/login"
               onClick={() => setMobileMenuOpen(false)}
               className="w-full text-center py-2 text-base font-medium text-[#475569] hover:text-[#0f172a] rounded-lg hover:bg-[#faf9fd]"
             >
               Log in
-            </a>
-            <a
-              href="#cta"
+            </Link>
+            <Link
+              href="/register"
               onClick={() => setMobileMenuOpen(false)}
               className="w-full text-center py-2.5 text-base font-medium text-white bg-[#6e56cf] hover:bg-[#5d46be] rounded-lg shadow-sm"
             >
               Create my portfolio
-            </a>
+            </Link>
           </div>
         </div>
       )}

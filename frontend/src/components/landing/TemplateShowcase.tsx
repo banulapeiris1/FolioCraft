@@ -1,33 +1,4 @@
-import React from "react";
-import { CheckIcon, SparklesIcon } from "./icons";
-
-interface TemplateItem {
-  id: string;
-  name: string;
-  tagline: string;
-  badge?: string;
-  isPopular?: boolean;
-}
-
-const templates: TemplateItem[] = [
-  {
-    id: "minimal",
-    name: "Minimal",
-    tagline: "Clean typography and maximum whitespace for an editorial, distraction-free look.",
-  },
-  {
-    id: "modern",
-    name: "Modern Developer",
-    tagline: "High-contrast components, interactive project pills, and developer-focused accents.",
-    badge: "Most Popular",
-    isPopular: true,
-  },
-  {
-    id: "professional",
-    name: "Professional",
-    tagline: "Structured executive layout with dedicated credentials and corporate-ready styling.",
-  },
-];
+import { SparklesIcon } from "./icons";
 
 export default function TemplateShowcase() {
   return (

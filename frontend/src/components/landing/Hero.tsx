@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import {
   ArrowRightIcon,
   CheckCircleIcon,
@@ -7,8 +8,6 @@ import {
   FileTextIcon,
   FolioCraftLogo,
   GlobeIcon,
-  LaptopIcon,
-  LayoutTemplateIcon,
   PaletteIcon,
   SparklesIcon,
   UploadCloudIcon,
@@ -16,19 +15,23 @@ import {
 
 export default function Hero() {
   return (
-    <section className="relative pt-12 pb-20 sm:pt-16 sm:pb-28 overflow-hidden bg-gradient-to-b from-[#fbfaff] via-[#faf9fd] to-[#f4f1fa]">
-      {/* Background radial glow */}
+    <section className="relative pt-12 pb-20 sm:pt-20 sm:pb-28 overflow-hidden bg-grid-pattern">
+      {/* Background ambient gradient blurs */}
       <div
-        className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-[#6e56cf]/8 rounded-full blur-3xl pointer-events-none"
+        className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-[#6e56cf]/10 rounded-full blur-3xl pointer-events-none"
+        aria-hidden="true"
+      />
+      <div
+        className="absolute top-1/3 left-1/3 -translate-x-1/2 w-[300px] h-[200px] bg-[#9e7aff]/10 rounded-full blur-2xl pointer-events-none"
         aria-hidden="true"
       />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        {/* Hero Top Copy */}
-        <div className="text-center max-w-3xl mx-auto space-y-5">
-          {/* Eyebrow Pill */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#f3f0ff] border border-[#dcd3f8] text-xs font-semibold tracking-wide text-[#6e56cf] uppercase shadow-xs">
-            <SparklesIcon className="w-3.5 h-3.5 text-[#6e56cf]" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        {/* Hero Copy Content */}
+        <div className="text-center max-w-3xl mx-auto space-y-6">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#f3f0ff] border border-[#dcd3f8] text-xs font-semibold text-[#6e56cf] shadow-xs">
+            <SparklesIcon className="w-3.5 h-3.5" />
             <span>CV to Portfolio in Minutes</span>
           </div>
 
@@ -45,13 +48,13 @@ export default function Hero() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
-            <a
-              href="#workflow"
+            <Link
+              href="/register"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-base font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-md shadow-[#6e56cf]/25 hover:shadow-lg hover:shadow-[#6e56cf]/30 transition-all active:scale-[0.98]"
             >
               <span>Create my portfolio</span>
               <ArrowRightIcon className="w-4 h-4" />
-            </a>
+            </Link>
 
             <a
               href="#editor-preview"

@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { ArrowRightIcon, CheckIcon, SparklesIcon } from "./icons";
 
 export default function FinalCTA() {
@@ -29,13 +30,13 @@ export default function FinalCTA() {
 
           {/* Action Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
-              href="#workflow"
+            <Link
+              href="/register"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-md shadow-[#6e56cf]/25 hover:shadow-lg hover:shadow-[#6e56cf]/35 transition-all active:scale-[0.98]"
             >
               <span>Create my portfolio</span>
               <ArrowRightIcon className="w-4 h-4" />
-            </a>
+            </Link>
 
             <a
               href="#editor-preview"
