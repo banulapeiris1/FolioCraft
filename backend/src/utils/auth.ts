@@ -68,11 +68,7 @@ export function signToken(payload: JwtPayload): string {
   const secret = getJwtSecret();
   const expiresIn = getJwtExpiresIn();
 
-  const options: jwt.SignOptions = {
-    expiresIn: expiresIn as jwt.SignOptions["expiresIn"],
-  };
-
-  return jwt.sign(payload, secret, options);
+  return jwt.sign(payload, secret, { expiresIn } as jwt.SignOptions);
 }
 
 /**

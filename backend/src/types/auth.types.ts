@@ -1,4 +1,4 @@
-// Authentication TypeScript Definitions (AUTH-02)
+// Authentication TypeScript Definitions (AUTH-02, AUTH-03)
 
 /**
  * Safe public user representation without sensitive fields (e.g. password_hash)
@@ -32,4 +32,21 @@ export interface JwtPayload {
 export interface AuthResponse {
   user: AuthUser;
   token: string;
+}
+
+/**
+ * Validated request body for user registration
+ */
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
+/**
+ * Validated request body for user login
+ */
+export interface LoginRequest {
+  email: string;
+  password: string;
 }

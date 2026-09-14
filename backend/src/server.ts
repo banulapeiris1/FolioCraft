@@ -2,8 +2,10 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { pool } from "./config/database";
+import { authRoutes } from "./routes/auth.routes";
+import { errorHandler } from "./middleware/error.middleware";
 
-const app = express();
+export const app = express();
 
 app.use(cors());
 app.use(express.json());
@@ -16,13 +18,23 @@ app.get("/", (_req, res) => {
   });
 });
 
-app.listen(PORT, async () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.use("/api/auth", authRoutes);
 
-  try {
-    await pool.query("SELECT NOW()");
-    console.log("PostgreSQL connected successfully");
-  } catch (error) {
-    console.error("PostgreSQL connection failed:", error);
-  }
-});
+app.use(errorHandler);
+
+const isTest =
+  process.env.NODE_ENV === "test" ||
+  process.argv.some((arg) => arg.includes("--test"));
+
+if (!isTest) {
+  app.listen(PORT, async () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+
+    try {
+      await pool.query("SELECT NOW()");
+      console.log("PostgreSQL connected successfully");
+    } catch (error) {
+      console.error("PostgreSQL connection failed:", error);
+    }
+  });
+}
