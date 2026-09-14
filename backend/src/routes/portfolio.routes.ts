@@ -19,5 +19,16 @@ router.get("/:id", authMiddleware, (req, res, next) =>
   portfolioController.getPortfolioById(req, res, next)
 );
 
+// PUT /api/portfolios/:id - Update an existing portfolio (authenticated, ownership-aware)
+router.put("/:id", authMiddleware, (req, res, next) =>
+  portfolioController.updatePortfolio(req, res, next)
+);
+
+// DELETE /api/portfolios/:id - Delete an existing portfolio (authenticated, ownership-aware)
+router.delete("/:id", authMiddleware, (req, res, next) =>
+  portfolioController.deletePortfolio(req, res, next)
+);
+
 export const portfolioRoutes = router;
+
 

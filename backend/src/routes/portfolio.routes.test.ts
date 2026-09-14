@@ -493,3 +493,375 @@ test("PORTFOLIO-04: Read Portfolios HTTP API Suite (GET /api/portfolios & GET /a
   });
 });
 
+test("PORTFOLIO-05: Update and Delete Portfolio HTTP API Suite (PUT & DELETE /api/portfolios/:id)", async (t) => {
+  let server: Server;
+  let baseUrl: string;
+
+  const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  let user1Id = "";
+  let user2Id = "";
+  let user1Jwt = "";
+  let user2Jwt = "";
+
+  let portfolio1Id = "";
+  let portfolio2Id = "";
+  const createdPortfolioIds: string[] = [];
+
+  t.before(async () => {
+    server = app.listen(0);
+    const address = server.address() as AddressInfo;
+    baseUrl = `http://localhost:${address.port}`;
+
+    // User 1
+    const u1 = await pool.query<{ id: string }>(
+      `INSERT INTO users (name, email, password_hash)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      ["Owner User", `owner_${uniqueSuffix}@foliocraft.test`, "hashed_dummy_pw"]
+    );
+    user1Id = u1.rows[0]!.id;
+    user1Jwt = signToken({ userId: user1Id });
+
+    // User 2
+    const u2 = await pool.query<{ id: string }>(
+      `INSERT INTO users (name, email, password_hash)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      ["Other User", `other_${uniqueSuffix}@foliocraft.test`, "hashed_dummy_pw"]
+    );
+    user2Id = u2.rows[0]!.id;
+    user2Jwt = signToken({ userId: user2Id });
+
+    // Create Portfolio 1 for User 1
+    const p1 = await pool.query<{ id: string }>(
+      `INSERT INTO portfolios (
+         user_id, name, email, phone, location, title, about,
+         profile_image_url, social_links, username, template, published
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING id`,
+      [
+        user1Id,
+        "Original Name",
+        "original@example.com",
+        "+15551112222",
+        "Austin, TX",
+        "Original Title",
+        "Original Bio",
+        "https://example.com/pic.jpg",
+        JSON.stringify({ github: "https://github.com/original" }),
+        `p1_${uniqueSuffix}`,
+        "modern",
+        false,
+      ]
+    );
+    portfolio1Id = p1.rows[0]!.id;
+    createdPortfolioIds.push(portfolio1Id);
+
+    // Create Portfolio 2 for User 2
+    const p2 = await pool.query<{ id: string }>(
+      `INSERT INTO portfolios (user_id, name, title, username)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [user2Id, "User 2 Portfolio", "Staff Eng", `p2_${uniqueSuffix}`]
+    );
+    portfolio2Id = p2.rows[0]!.id;
+    createdPortfolioIds.push(portfolio2Id);
+  });
+
+  t.after(async () => {
+    server.close();
+    try {
+      for (const pId of createdPortfolioIds) {
+        await pool.query("DELETE FROM portfolios WHERE id = $1", [pId]);
+      }
+      for (const uId of [user1Id, user2Id]) {
+        if (uId) {
+          await pool.query("DELETE FROM users WHERE id = $1", [uId]);
+        }
+      }
+    } catch (e) {
+      console.error("Cleanup error in PORTFOLIO-05 tests:", e);
+    }
+  });
+
+  // PUT /api/portfolios/:id tests
+  await t.test("1 & 2 & 3 & 4 & 5. Authenticated owner can partially update portfolio (200 OK, preserves unspecified fields)", async () => {
+    // Wait briefly so updated_at timestamp progresses
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const updatePayload = {
+      title: "Senior Full Stack Developer",
+      about: "Updated portfolio description for Austin tech scene.",
+      socialLinks: {
+        github: "https://github.com/updated",
+        linkedin: "https://linkedin.com/in/updated",
+      },
+    };
+
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user1Jwt}`,
+      },
+      body: JSON.stringify(updatePayload),
+    });
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { portfolio: Portfolio };
+    assert.ok(body.portfolio);
+    const p = body.portfolio;
+
+    // Updated fields
+    assert.equal(p.title, updatePayload.title);
+    assert.equal(p.about, updatePayload.about);
+    assert.deepEqual(p.socialLinks, updatePayload.socialLinks);
+
+    // Preserved fields
+    assert.equal(p.name, "Original Name");
+    assert.equal(p.email, "original@example.com");
+    assert.equal(p.phone, "+15551112222");
+    assert.equal(p.location, "Austin, TX");
+    assert.equal(p.profileImageUrl, "https://example.com/pic.jpg");
+    assert.equal(p.username, `p1_${uniqueSuffix}`);
+    assert.equal(p.template, "modern");
+    assert.equal(p.published, false);
+
+    // Verify in PostgreSQL
+    const dbCheck = await pool.query(
+      "SELECT title, about, name, email FROM portfolios WHERE id = $1",
+      [portfolio1Id]
+    );
+    assert.equal(dbCheck.rows[0].title, updatePayload.title);
+    assert.equal(dbCheck.rows[0].about, updatePayload.about);
+    assert.equal(dbCheck.rows[0].name, "Original Name");
+  });
+
+  await t.test("6 & 7. updated_at changes after update while created_at remains unchanged", async () => {
+    const beforeRes = await pool.query<{ created_at: Date; updated_at: Date }>(
+      "SELECT created_at, updated_at FROM portfolios WHERE id = $1",
+      [portfolio1Id]
+    );
+    const initialCreatedAt = beforeRes.rows[0]!.created_at.getTime();
+    const initialUpdatedAt = beforeRes.rows[0]!.updated_at.getTime();
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user1Jwt}`,
+      },
+      body: JSON.stringify({ location: "New York, NY" }),
+    });
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { portfolio: Portfolio };
+
+    const newCreatedAt = new Date(body.portfolio.createdAt).getTime();
+    const newUpdatedAt = new Date(body.portfolio.updatedAt).getTime();
+
+    assert.equal(newCreatedAt, initialCreatedAt, "created_at must remain unchanged");
+    assert.ok(newUpdatedAt >= initialUpdatedAt, "updated_at must change");
+  });
+
+  await t.test("8. PUT /api/portfolios/:id unauthenticated request returns 401", async () => {
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Unauthorized Title" }),
+    });
+
+    assert.equal(res.status, 401);
+    const body = (await res.json()) as { message: string };
+    assert.match(body.message, /authentication required/i);
+  });
+
+  await t.test("9. PUT /api/portfolios/:id nonexistent portfolio returns 404", async () => {
+    const dummyUuid = "00000000-0000-0000-0000-000000000000";
+    const res = await fetch(`${baseUrl}/api/portfolios/${dummyUuid}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user1Jwt}`,
+      },
+      body: JSON.stringify({ title: "Ghost Title" }),
+    });
+
+    assert.equal(res.status, 404);
+    const body = (await res.json()) as { message: string };
+    assert.equal(body.message, "Portfolio not found");
+  });
+
+  await t.test("10. PUT /api/portfolios/:id another authenticated user receives 403 Forbidden", async () => {
+    // User 2 attempts to modify User 1's portfolio
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user2Jwt}`, // User 2
+      },
+      body: JSON.stringify({ title: "Hacked by User 2" }),
+    });
+
+    assert.equal(res.status, 403);
+    const body = (await res.json()) as { message: string };
+    assert.equal(body.message, "Unauthorized to modify this portfolio");
+  });
+
+  await t.test("11. PUT /api/portfolios/:id duplicate username returns 409 Conflict", async () => {
+    // User 1 tries to change username to User 2's username (p2_${uniqueSuffix})
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user1Jwt}`,
+      },
+      body: JSON.stringify({ username: `p2_${uniqueSuffix}` }),
+    });
+
+    assert.equal(res.status, 409);
+    const body = (await res.json()) as { message: string };
+    assert.equal(body.message, "Username is already taken");
+  });
+
+  await t.test("12. PUT /api/portfolios/:id existing username can remain unchanged", async () => {
+    // User 1 updates portfolio submitting its own current username
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user1Jwt}`,
+      },
+      body: JSON.stringify({ username: `p1_${uniqueSuffix}`, published: true }),
+    });
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { portfolio: Portfolio };
+    assert.equal(body.portfolio.username, `p1_${uniqueSuffix}`);
+    assert.equal(body.portfolio.published, true);
+  });
+
+  await t.test("13. PUT /api/portfolios/:id invalid field types return 400 Bad Request", async () => {
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user1Jwt}`,
+      },
+      body: JSON.stringify({ socialLinks: "not-an-object" }),
+    });
+
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as { message: string };
+    assert.ok(body.message);
+  });
+
+  await t.test("14. PUT /api/portfolios/:id empty update body returns 400 Bad Request", async () => {
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user1Jwt}`,
+      },
+      body: JSON.stringify({}),
+    });
+
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as { message: string };
+    assert.equal(body.message, "No fields provided for update");
+  });
+
+  await t.test("15. PUT /api/portfolios/:id client-supplied userId cannot change ownership", async () => {
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user1Jwt}`,
+      },
+      body: JSON.stringify({
+        userId: user2Id, // Attacker tries to transfer ownership
+        title: "Owner Stays Same",
+      }),
+    });
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { portfolio: Portfolio };
+    assert.equal(body.portfolio.userId, user1Id, "Ownership must remain with authenticated user");
+    assert.notEqual(body.portfolio.userId, user2Id);
+  });
+
+  // DELETE /api/portfolios/:id tests
+  await t.test("20. DELETE /api/portfolios/:id unauthenticated request returns 401", async () => {
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "DELETE",
+    });
+
+    assert.equal(res.status, 401);
+    const body = (await res.json()) as { message: string };
+    assert.match(body.message, /authentication required/i);
+  });
+
+  await t.test("21. DELETE /api/portfolios/:id nonexistent portfolio returns 404", async () => {
+    const dummyUuid = "00000000-0000-0000-0000-000000000000";
+    const res = await fetch(`${baseUrl}/api/portfolios/${dummyUuid}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${user1Jwt}`,
+      },
+    });
+
+    assert.equal(res.status, 404);
+    const body = (await res.json()) as { message: string };
+    assert.equal(body.message, "Portfolio not found");
+  });
+
+  await t.test("22 & 23. DELETE /api/portfolios/:id another user receives 403 and portfolio remains untouched", async () => {
+    // User 2 attempts to delete User 1's portfolio
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${user2Jwt}`, // User 2
+      },
+    });
+
+    assert.equal(res.status, 403);
+    const body = (await res.json()) as { message: string };
+    assert.equal(body.message, "Unauthorized to delete this portfolio");
+
+    // Verify it still exists in DB
+    const check = await pool.query("SELECT id FROM portfolios WHERE id = $1", [portfolio1Id]);
+    assert.equal(check.rows.length, 1, "Portfolio must remain untouched");
+  });
+
+  await t.test("16 & 17 & 18 & 19. Authenticated owner can delete portfolio (200 OK, removed from DB, subsequent GET 404)", async () => {
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${user1Jwt}`,
+      },
+    });
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { success: boolean; id: string };
+    assert.equal(body.success, true);
+    assert.equal(body.id, portfolio1Id);
+
+    // Verify removed from PostgreSQL
+    const check = await pool.query("SELECT id FROM portfolios WHERE id = $1", [portfolio1Id]);
+    assert.equal(check.rows.length, 0, "Portfolio must be deleted from PostgreSQL");
+
+    // Subsequent GET returns 404
+    const getRes = await fetch(`${baseUrl}/api/portfolios/${portfolio1Id}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${user1Jwt}`,
+      },
+    });
+    assert.equal(getRes.status, 404);
+  });
+});
+
+
