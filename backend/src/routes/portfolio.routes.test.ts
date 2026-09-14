@@ -270,3 +270,226 @@ test("PORTFOLIO-03: Create Portfolio HTTP API Suite (POST /api/portfolios)", asy
     assert.notEqual(body.portfolio.userId, otherUserId);
   });
 });
+
+test("PORTFOLIO-04: Read Portfolios HTTP API Suite (GET /api/portfolios & GET /api/portfolios/:id)", async (t) => {
+  let server: Server;
+  let baseUrl: string;
+
+  const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  let userAId = "";
+  let userBId = "";
+  let userCId = "";
+  let userAJwt = "";
+  let userBJwt = "";
+  let userCJwt = "";
+
+  let portfolioA1Id = "";
+  let portfolioA2Id = "";
+  let portfolioB1Id = "";
+  const createdPortfolioIds: string[] = [];
+
+  t.before(async () => {
+    server = app.listen(0);
+    const address = server.address() as AddressInfo;
+    baseUrl = `http://localhost:${address.port}`;
+
+    // User A
+    const uA = await pool.query<{ id: string }>(
+      `INSERT INTO users (name, email, password_hash)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      ["User Alpha", `alpha_${uniqueSuffix}@foliocraft.test`, "hashed_dummy_pw"]
+    );
+    userAId = uA.rows[0]!.id;
+    userAJwt = signToken({ userId: userAId });
+
+    // User B
+    const uB = await pool.query<{ id: string }>(
+      `INSERT INTO users (name, email, password_hash)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      ["User Beta", `beta_${uniqueSuffix}@foliocraft.test`, "hashed_dummy_pw"]
+    );
+    userBId = uB.rows[0]!.id;
+    userBJwt = signToken({ userId: userBId });
+
+    // User C (no portfolios)
+    const uC = await pool.query<{ id: string }>(
+      `INSERT INTO users (name, email, password_hash)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      ["User Gamma", `gamma_${uniqueSuffix}@foliocraft.test`, "hashed_dummy_pw"]
+    );
+    userCId = uC.rows[0]!.id;
+    userCJwt = signToken({ userId: userCId });
+
+    // Create Portfolio A1
+    const pA1 = await pool.query<{ id: string }>(
+      `INSERT INTO portfolios (user_id, name, title, username, about, template)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [userAId, "Alpha Portfolio 1", "Frontend Engineer", `alpha1_${uniqueSuffix}`, "Building web apps", "minimal"]
+    );
+    portfolioA1Id = pA1.rows[0]!.id;
+    createdPortfolioIds.push(portfolioA1Id);
+
+    // Create Portfolio A2
+    const pA2 = await pool.query<{ id: string }>(
+      `INSERT INTO portfolios (user_id, name, title, username, template)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id`,
+      [userAId, "Alpha Portfolio 2", "UI Architect", `alpha2_${uniqueSuffix}`, "modern"]
+    );
+    portfolioA2Id = pA2.rows[0]!.id;
+    createdPortfolioIds.push(portfolioA2Id);
+
+    // Create Portfolio B1
+    const pB1 = await pool.query<{ id: string }>(
+      `INSERT INTO portfolios (user_id, name, title, username, template)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id`,
+      [userBId, "Beta Portfolio 1", "Backend Engineer", `beta1_${uniqueSuffix}`, "modern"]
+    );
+    portfolioB1Id = pB1.rows[0]!.id;
+    createdPortfolioIds.push(portfolioB1Id);
+  });
+
+  t.after(async () => {
+    server.close();
+    try {
+      for (const pId of createdPortfolioIds) {
+        await pool.query("DELETE FROM portfolios WHERE id = $1", [pId]);
+      }
+      for (const uId of [userAId, userBId, userCId]) {
+        if (uId) {
+          await pool.query("DELETE FROM users WHERE id = $1", [uId]);
+        }
+      }
+    } catch (e) {
+      console.error("Cleanup error in PORTFOLIO-04 tests:", e);
+    }
+  });
+
+  // GET /api/portfolios tests
+  await t.test("1 & 2 & 3. GET /api/portfolios returns 200 with only authenticated user's portfolios (no cross-user leak)", async () => {
+    const res = await fetch(`${baseUrl}/api/portfolios`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${userAJwt}`,
+      },
+    });
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { portfolios: Portfolio[] };
+
+    assert.ok(Array.isArray(body.portfolios), "Expected portfolios array");
+    assert.equal(body.portfolios.length, 2, "User A should have exactly 2 portfolios");
+
+    const ids = body.portfolios.map((p) => p.id);
+    assert.ok(ids.includes(portfolioA1Id), "Must contain portfolio A1");
+    assert.ok(ids.includes(portfolioA2Id), "Must contain portfolio A2");
+    assert.ok(!ids.includes(portfolioB1Id), "Must NOT contain portfolio B1 belonging to User B");
+
+    for (const p of body.portfolios) {
+      assert.equal(p.userId, userAId);
+    }
+  });
+
+  await t.test("4. GET /api/portfolios for user with no portfolios returns 200 with empty collection", async () => {
+    const res = await fetch(`${baseUrl}/api/portfolios`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${userCJwt}`,
+      },
+    });
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { portfolios: Portfolio[] };
+    assert.ok(Array.isArray(body.portfolios));
+    assert.equal(body.portfolios.length, 0);
+  });
+
+  await t.test("5. GET /api/portfolios unauthenticated request returns 401", async () => {
+    const res = await fetch(`${baseUrl}/api/portfolios`, {
+      method: "GET",
+    });
+
+    assert.equal(res.status, 401);
+    const body = (await res.json()) as { message: string };
+    assert.match(body.message, /authentication required/i);
+  });
+
+  // GET /api/portfolios/:id tests
+  await t.test("6 & 7. GET /api/portfolios/:id authenticated owner receives 200 with full portfolio data", async () => {
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolioA1Id}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${userAJwt}`,
+      },
+    });
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { portfolio: Portfolio };
+    assert.ok(body.portfolio);
+    assert.equal(body.portfolio.id, portfolioA1Id);
+    assert.equal(body.portfolio.userId, userAId);
+    assert.equal(body.portfolio.name, "Alpha Portfolio 1");
+    assert.equal(body.portfolio.title, "Frontend Engineer");
+    assert.equal(body.portfolio.about, "Building web apps");
+    assert.equal(body.portfolio.username, `alpha1_${uniqueSuffix}`);
+    assert.equal(body.portfolio.template, "minimal");
+    assert.equal(body.portfolio.published, false);
+  });
+
+  await t.test("8. GET /api/portfolios/:id unauthenticated request returns 401", async () => {
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolioA1Id}`, {
+      method: "GET",
+    });
+
+    assert.equal(res.status, 401);
+    const body = (await res.json()) as { message: string };
+    assert.match(body.message, /authentication required/i);
+  });
+
+  await t.test("9. GET /api/portfolios/:id nonexistent portfolio returns 404 Not Found", async () => {
+    const dummyUuid = "00000000-0000-0000-0000-000000000000";
+    const res = await fetch(`${baseUrl}/api/portfolios/${dummyUuid}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${userAJwt}`,
+      },
+    });
+
+    assert.equal(res.status, 404);
+    const body = (await res.json()) as { message: string };
+    assert.equal(body.message, "Portfolio not found");
+  });
+
+  await t.test("10. GET /api/portfolios/:id another authenticated user cannot access portfolio (403 Forbidden)", async () => {
+    // User B attempts to access User A's portfolio A1
+    const res = await fetch(`${baseUrl}/api/portfolios/${portfolioA1Id}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${userBJwt}`, // User B
+      },
+    });
+
+    assert.equal(res.status, 403);
+    const body = (await res.json()) as { message: string };
+    assert.equal(body.message, "Unauthorized access to portfolio");
+  });
+
+  await t.test("11. GET /api/portfolios/:id malformed portfolio ID returns 404 Not Found", async () => {
+    const res = await fetch(`${baseUrl}/api/portfolios/not-a-valid-uuid`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${userAJwt}`,
+      },
+    });
+
+    assert.equal(res.status, 404);
+    const body = (await res.json()) as { message: string };
+    assert.equal(body.message, "Portfolio not found");
+  });
+});
+

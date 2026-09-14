@@ -49,6 +49,66 @@ export class PortfolioController {
       next(error);
     }
   }
+
+  /**
+   * Handles GET /api/portfolios
+   * Retrieves all portfolios belonging strictly to the authenticated user.
+   */
+  async getPortfolios(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.user || !req.user.userId) {
+        res.status(401).json({ message: "Authentication required" });
+        return;
+      }
+
+      const portfolios = await portfolioService.getPortfoliosByUserId(
+        req.user.userId
+      );
+
+      res.status(200).json({ portfolios });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * Handles GET /api/portfolios/:id
+   * Retrieves a single portfolio by ID with ownership-aware verification.
+   */
+  async getPortfolioById(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.user || !req.user.userId) {
+        res.status(401).json({ message: "Authentication required" });
+        return;
+      }
+
+      const id = req.params.id as string;
+      const portfolio = await portfolioService.getPortfolioById(
+        id,
+        req.user.userId
+      );
+
+      res.status(200).json({ portfolio });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
 }
 
 export const portfolioController = new PortfolioController();
