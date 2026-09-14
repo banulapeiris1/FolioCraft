@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { pool } from "./config/database";
 import { authRoutes } from "./routes/auth.routes";
+import { portfolioRoutes } from "./routes/portfolio.routes";
 import { errorHandler } from "./middleware/error.middleware";
 
 export const app = express();
@@ -19,6 +20,7 @@ app.get("/", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/portfolios", portfolioRoutes);
 
 app.use(errorHandler);
 
