@@ -108,6 +108,48 @@ export class AuthService {
       token,
     };
   }
+
+  /**
+   * Retrieves the current user profile by userId.
+   * Queries the users table using a parameterized query.
+   * Returns only safe fields (id, name, email, created_at, updated_at).
+   * Does NOT return password_hash.
+   * Throws 404 AppError if user does not exist.
+   */
+  async getCurrentUser(userId: string): Promise<AuthUser> {
+    // Validate UUID format to prevent PostgreSQL 22P02 syntax errors on malformed IDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(userId)) {
+      throw new AppError("User not found", 404);
+    }
+
+    const result = await pool.query<AuthUser>(
+      `SELECT id, name, email, created_at, updated_at
+       FROM users
+       WHERE id = $1`,
+      [userId]
+    );
+
+    const user = result.rows[0];
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    const safeUser: AuthUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    };
+
+    if (user.created_at !== undefined) {
+      safeUser.created_at = user.created_at;
+    }
+    if (user.updated_at !== undefined) {
+      safeUser.updated_at = user.updated_at;
+    }
+
+    return safeUser;
+  }
 }
 
 export const authService = new AuthService();

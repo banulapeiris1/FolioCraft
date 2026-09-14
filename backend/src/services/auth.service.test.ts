@@ -79,8 +79,8 @@ test("AUTH-03: Register & Login Service Integration Suite", async (t) => {
     assert.ok(response.user.id, "User ID must be returned");
 
     // 7. Response does not contain password_hash
-    assert.equal((response.user as Record<string, unknown>).password_hash, undefined, "password_hash must never be in response");
-    assert.equal((response as Record<string, unknown>).password_hash, undefined, "password_hash must never be in response");
+    assert.equal((response.user as unknown as Record<string, unknown>).password_hash, undefined, "password_hash must never be in response");
+    assert.equal((response as unknown as Record<string, unknown>).password_hash, undefined, "password_hash must never be in response");
 
     // 14. Returned token can be verified using JWT utility
     const decoded = verifyToken(response.token);
@@ -129,8 +129,8 @@ test("AUTH-03: Register & Login Service Integration Suite", async (t) => {
     assert.equal(response.user.email, testEmail);
 
     // 13. Response does not contain password_hash
-    assert.equal((response.user as Record<string, unknown>).password_hash, undefined);
-    assert.equal((response as Record<string, unknown>).password_hash, undefined);
+    assert.equal((response.user as unknown as Record<string, unknown>).password_hash, undefined);
+    assert.equal((response as unknown as Record<string, unknown>).password_hash, undefined);
 
     const decoded = verifyToken(response.token);
     assert.equal(decoded.userId, response.user.id);
@@ -179,5 +179,62 @@ test("AUTH-03: Register & Login Service Integration Suite", async (t) => {
     assert.ok(unknownEmailError);
     assert.equal(incorrectPasswordError?.statusCode, unknownEmailError?.statusCode);
     assert.equal(incorrectPasswordError?.message, unknownEmailError?.message);
+  });
+
+  // AUTH-05A: Current User Service Tests
+  let registeredUserId: string;
+
+  await t.test("AUTH-05A: Setup registered user for getCurrentUser tests", async () => {
+    const regRes = await authService.register({
+      name: "Current User Tester",
+      email: `current_user_${uniqueTag}@foliocraft.test`,
+      password: "Password123!",
+    });
+    registeredUserId = regRes.user.id;
+    assert.ok(registeredUserId);
+  });
+
+  await t.test("AUTH-05A: getCurrentUser returns safe user data for existing user", async () => {
+    const user = await authService.getCurrentUser(registeredUserId);
+
+    assert.equal(user.id, registeredUserId);
+    assert.equal(user.name, "Current User Tester");
+    assert.equal(user.email, `current_user_${uniqueTag}@foliocraft.test`);
+    assert.ok(user.created_at instanceof Date || typeof user.created_at === "string");
+    assert.ok(user.updated_at instanceof Date || typeof user.updated_at === "string");
+  });
+
+  await t.test("AUTH-05A: getCurrentUser never includes password_hash in returned object", async () => {
+    const user = await authService.getCurrentUser(registeredUserId);
+    assert.equal((user as unknown as Record<string, unknown>).password_hash, undefined, "password_hash must never be returned");
+  });
+
+  await t.test("AUTH-05A: getCurrentUser throws 404 AppError when user does not exist", async () => {
+    const nonExistentUuid = "00000000-0000-4000-8000-000000000000";
+    await assert.rejects(
+      async () => {
+        await authService.getCurrentUser(nonExistentUuid);
+      },
+      (err: unknown) => {
+        assert.ok(err instanceof AppError);
+        assert.equal((err as AppError).statusCode, 404);
+        assert.equal((err as AppError).message, "User not found");
+        return true;
+      }
+    );
+  });
+
+  await t.test("AUTH-05A: getCurrentUser throws 404 AppError on malformed non-UUID userId", async () => {
+    await assert.rejects(
+      async () => {
+        await authService.getCurrentUser("non-uuid-string");
+      },
+      (err: unknown) => {
+        assert.ok(err instanceof AppError);
+        assert.equal((err as AppError).statusCode, 404);
+        assert.equal((err as AppError).message, "User not found");
+        return true;
+      }
+    );
   });
 });

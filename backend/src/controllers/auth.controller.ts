@@ -51,6 +51,29 @@ export class AuthController {
       next(error);
     }
   }
+
+  /**
+   * Handles request to get the current authenticated user (GET /api/auth/me).
+   * Relies on req.user.userId from authMiddleware, calls authService.getCurrentUser,
+   * and returns 200 with the safe user data.
+   */
+  async getCurrentUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user || !req.user.userId) {
+        res.status(401).json({ message: "Authentication required" });
+        return;
+      }
+
+      const user = await authService.getCurrentUser(req.user.userId);
+      res.status(200).json({ user });
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
 }
 
 export const authController = new AuthController();

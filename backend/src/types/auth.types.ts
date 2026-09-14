@@ -35,6 +35,13 @@ export interface AuthResponse {
 }
 
 /**
+ * Response returned by GET /api/auth/me
+ */
+export interface CurrentUserResponse {
+  user: AuthUser;
+}
+
+/**
  * Validated request body for user registration
  */
 export interface RegisterRequest {
