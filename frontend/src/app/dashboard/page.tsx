@@ -115,13 +115,12 @@ export default function DashboardPage() {
 
             {/* Action Buttons */}
             <div className="mt-8 flex flex-col sm:flex-row items-center gap-3.5">
-              <button
-                type="button"
-                onClick={() => setShowPortfolioNotice(true)}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-md shadow-[#6e56cf]/25 hover:shadow-lg hover:shadow-[#6e56cf]/35 transition-all active:scale-[0.98] cursor-pointer"
+              <Link
+                href="/portfolio/create"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-md shadow-[#6e56cf]/25 hover:shadow-lg hover:shadow-[#6e56cf]/35 transition-all active:scale-[0.98]"
               >
                 <span>+ Create Portfolio</span>
-              </button>
+              </Link>
 
               <button
                 type="button"
