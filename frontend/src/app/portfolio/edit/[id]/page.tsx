@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { FolioCraftLogo } from "@/components/landing/icons";
 import PortfolioForm from "@/components/portfolio/PortfolioForm";
+import ProjectManager from "@/components/project/ProjectManager";
 import {
   BriefcaseIcon,
   AlertCircleIcon,
   CheckCircleIcon,
+  FolderGit2Icon,
 } from "@/components/portfolio/PortfolioIcons";
 import { getPortfolio, updatePortfolio, ApiError } from "@/lib/api";
 import { Portfolio, PortfolioFormData } from "@/types/portfolio";
@@ -25,6 +27,7 @@ export default function EditPortfolioPage({
   const router = useRouter();
   const { user, token, isLoading, isAuthenticated, logout } = useAuth();
 
+  const [activeTab, setActiveTab] = useState<"profile" | "projects">("profile");
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -40,6 +43,16 @@ export default function EditPortfolioPage({
       router.replace("/login");
     }
   }, [isLoading, isAuthenticated, router]);
+
+  // Read URL tab query parameter if present
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("tab") === "projects") {
+        setActiveTab("projects");
+      }
+    }
+  }, []);
 
   // Fetch existing portfolio data on load
   useEffect(() => {
@@ -260,22 +273,63 @@ export default function EditPortfolioPage({
           /* Loaded Form Content */
           <>
             {/* Page Header */}
-            <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f3f0ff] border border-[#dcd3f8] text-xs font-semibold text-[#6e56cf] uppercase tracking-wider mb-3">
-                  <BriefcaseIcon className="w-3.5 h-3.5" />
-                  <span>Editing Mode</span>
+                  {activeTab === "profile" ? (
+                    <>
+                      <BriefcaseIcon className="w-3.5 h-3.5" />
+                      <span>Portfolio Settings</span>
+                    </>
+                  ) : (
+                    <>
+                      <FolderGit2Icon className="w-3.5 h-3.5" />
+                      <span>Project Management</span>
+                    </>
+                  )}
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a]">
-                  Edit Portfolio Information
+                  {activeTab === "profile"
+                    ? "Edit Portfolio Information"
+                    : "Manage Projects"}
                 </h1>
                 <p className="mt-1.5 text-sm text-[#64748b] max-w-2xl">
-                  Modify your personal profile, contact channels, public handle, and template theme.
+                  {activeTab === "profile"
+                    ? "Modify your personal profile, contact channels, public handle, and template theme."
+                    : "Showcase your best engineering work, web apps, and open-source contributions."}
                 </p>
               </div>
               <div className="text-xs font-mono text-[#64748b] bg-white border border-[#eae6f5] px-3 py-1.5 rounded-xl self-start sm:self-auto">
                 ID: {portfolioId}
               </div>
+            </div>
+
+            {/* Section Switcher Tabs */}
+            <div className="flex items-center gap-2 border-b border-[#eae6f5] pb-3 mb-6">
+              <button
+                type="button"
+                onClick={() => setActiveTab("profile")}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+                  activeTab === "profile"
+                    ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
+                    : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
+                }`}
+              >
+                <BriefcaseIcon className="w-3.5 h-3.5" />
+                <span>Portfolio Profile</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("projects")}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+                  activeTab === "projects"
+                    ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
+                    : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
+                }`}
+              >
+                <FolderGit2Icon className="w-3.5 h-3.5" />
+                <span>Projects</span>
+              </button>
             </div>
 
             {/* Success Feedback Alert */}
@@ -297,16 +351,20 @@ export default function EditPortfolioPage({
               </div>
             )}
 
-            {/* Portfolio Form in Edit Mode */}
-            <PortfolioForm
-              mode="edit"
-              initialData={initialData}
-              isSubmitting={isSubmitting}
-              serverError={serverError}
-              serverFieldErrors={serverFieldErrors}
-              onSubmit={handleUpdate}
-              onCancel={() => router.push("/dashboard")}
-            />
+            {/* Active Section Content */}
+            {activeTab === "profile" ? (
+              <PortfolioForm
+                mode="edit"
+                initialData={initialData}
+                isSubmitting={isSubmitting}
+                serverError={serverError}
+                serverFieldErrors={serverFieldErrors}
+                onSubmit={handleUpdate}
+                onCancel={() => router.push("/dashboard")}
+              />
+            ) : (
+              <ProjectManager portfolioId={portfolioId} />
+            )}
           </>
         )}
       </main>

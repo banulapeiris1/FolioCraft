@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { portfolioController } from "../controllers/portfolio.controller";
+import { projectController } from "../controllers/project.controller";
 import { authMiddleware } from "../middleware/auth.middleware";
 
 const router = Router();
@@ -29,6 +30,17 @@ router.delete("/:id", authMiddleware, (req, res, next) =>
   portfolioController.deletePortfolio(req, res, next)
 );
 
+// POST /api/portfolios/:id/projects - Create a new project under portfolio (authenticated)
+router.post("/:id/projects", authMiddleware, (req, res, next) =>
+  projectController.createProject(req, res, next)
+);
+
+// GET /api/portfolios/:id/projects - Get all projects for portfolio (authenticated)
+router.get("/:id/projects", authMiddleware, (req, res, next) =>
+  projectController.getProjectsByPortfolio(req, res, next)
+);
+
 export const portfolioRoutes = router;
+
 
 
