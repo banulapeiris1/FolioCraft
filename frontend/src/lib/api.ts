@@ -155,7 +155,8 @@ import type {
   PortfolioFormData,
   PortfolioResponse,
   PortfoliosResponse,
-} from "@/types/portfolio";
+} from "../types/portfolio";
+
 
 /**
  * Creates a new portfolio for the authenticated user (POST /api/portfolios)
@@ -218,4 +219,107 @@ export async function getPortfolios(
     },
   });
 }
+
+import type {
+  ProjectFormData,
+  ProjectResponse,
+  ProjectsResponse,
+  DeleteProjectResponse,
+} from "../types/project";
+
+
+/**
+ * Creates a new project under a portfolio for the authenticated user (POST /api/portfolios/:id/projects)
+ */
+export async function createProject(
+  portfolioId: string,
+  data: ProjectFormData,
+  token: string
+): Promise<ProjectResponse> {
+  return request<ProjectResponse>(
+    `/api/portfolios/${encodeURIComponent(portfolioId)}/projects`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Retrieves all projects belonging to a portfolio (GET /api/portfolios/:id/projects)
+ */
+export async function getProjects(
+  portfolioId: string,
+  token: string
+): Promise<ProjectsResponse> {
+  return request<ProjectsResponse>(
+    `/api/portfolios/${encodeURIComponent(portfolioId)}/projects`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+}
+
+/**
+ * Retrieves a single project by ID (GET /api/projects/:id)
+ */
+export async function getProject(
+  projectId: string,
+  token: string
+): Promise<ProjectResponse> {
+  return request<ProjectResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+}
+
+/**
+ * Updates an existing project belonging to the authenticated user (PUT /api/projects/:id)
+ */
+export async function updateProject(
+  projectId: string,
+  data: Partial<ProjectFormData>,
+  token: string
+): Promise<ProjectResponse> {
+  return request<ProjectResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Deletes a project belonging to the authenticated user (DELETE /api/projects/:id)
+ */
+export async function deleteProject(
+  projectId: string,
+  token: string
+): Promise<DeleteProjectResponse> {
+  return request<DeleteProjectResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+}
+
 
