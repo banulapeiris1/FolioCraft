@@ -59,3 +59,23 @@ END $$;
 -- Index foreign key user_id for efficient user portfolio queries
 CREATE INDEX IF NOT EXISTS idx_portfolios_user_id ON portfolios(user_id);
 
+-- PROJECTS TABLE (PROJECT-01)
+-- Stores projects belonging to portfolios
+CREATE TABLE IF NOT EXISTS projects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    portfolio_id UUID NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    technologies JSONB DEFAULT '[]'::jsonb,
+    github_url TEXT,
+    project_url TEXT,
+    image_url TEXT,
+    order_index INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index foreign key portfolio_id for efficient portfolio project queries
+CREATE INDEX IF NOT EXISTS idx_projects_portfolio_id ON projects(portfolio_id);
+
+

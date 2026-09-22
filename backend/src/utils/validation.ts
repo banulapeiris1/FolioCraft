@@ -158,4 +158,59 @@ export const updatePortfolioSchema = z.object({
   published: z.boolean().optional(),
 });
 
+/**
+ * Validation schema for creating a new project under a portfolio.
+ * Enforces presence of title; validates optional description, technologies array,
+ * URLs, and orderIndex.
+ */
+export const createProjectSchema = z.object({
+  title: z
+    .string({ message: "Title is required" })
+    .trim()
+    .min(1, "Title is required")
+    .max(255, "Title cannot exceed 255 characters"),
+  description: z.string().trim().optional().nullable(),
+  technologies: z
+    .array(z.string().trim(), {
+      message: "Technologies must be an array of strings",
+    })
+    .optional(),
+  githubUrl: z.string().trim().optional().nullable(),
+  projectUrl: z.string().trim().optional().nullable(),
+  imageUrl: z.string().trim().optional().nullable(),
+  orderIndex: z
+    .number({ message: "Order index must be a number" })
+    .int("Order index must be an integer")
+    .min(0, "Order index cannot be negative")
+    .optional(),
+});
+
+/**
+ * Validation schema for updating an existing project.
+ * All fields are optional. Enforces type correctness and constraints.
+ */
+export const updateProjectSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "Title cannot be empty")
+    .max(255, "Title cannot exceed 255 characters")
+    .optional(),
+  description: z.string().trim().optional().nullable(),
+  technologies: z
+    .array(z.string().trim(), {
+      message: "Technologies must be an array of strings",
+    })
+    .optional(),
+  githubUrl: z.string().trim().optional().nullable(),
+  projectUrl: z.string().trim().optional().nullable(),
+  imageUrl: z.string().trim().optional().nullable(),
+  orderIndex: z
+    .number({ message: "Order index must be a number" })
+    .int("Order index must be an integer")
+    .min(0, "Order index cannot be negative")
+    .optional(),
+});
+
+
 

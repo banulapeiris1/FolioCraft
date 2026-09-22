@@ -4,6 +4,7 @@ import cors from "cors";
 import { pool } from "./config/database";
 import { authRoutes } from "./routes/auth.routes";
 import { portfolioRoutes } from "./routes/portfolio.routes";
+import { projectRoutes } from "./routes/project.routes";
 import { errorHandler } from "./middleware/error.middleware";
 
 export const app = express();
@@ -21,8 +22,10 @@ app.get("/", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/portfolios", portfolioRoutes);
+app.use("/api/projects", projectRoutes);
 
 app.use(errorHandler);
+
 
 const isTest =
   process.env.NODE_ENV === "test" ||
