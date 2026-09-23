@@ -322,4 +322,105 @@ export async function deleteProject(
   );
 }
 
+import type {
+  SkillFormData,
+  SkillResponse,
+  SkillsResponse,
+  DeleteSkillResponse,
+} from "../types/skill";
+
+/**
+ * Creates a new skill under a portfolio for the authenticated user (POST /api/portfolios/:id/skills)
+ */
+export async function createSkill(
+  portfolioId: string,
+  data: SkillFormData,
+  token: string
+): Promise<SkillResponse> {
+  return request<SkillResponse>(
+    `/api/portfolios/${encodeURIComponent(portfolioId)}/skills`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Retrieves all skills belonging to a portfolio (GET /api/portfolios/:id/skills)
+ */
+export async function getSkills(
+  portfolioId: string,
+  token: string
+): Promise<SkillsResponse> {
+  return request<SkillsResponse>(
+    `/api/portfolios/${encodeURIComponent(portfolioId)}/skills`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+}
+
+/**
+ * Retrieves a single skill by ID (GET /api/skills/:id)
+ */
+export async function getSkill(
+  skillId: string,
+  token: string
+): Promise<SkillResponse> {
+  return request<SkillResponse>(
+    `/api/skills/${encodeURIComponent(skillId)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+}
+
+/**
+ * Updates an existing skill belonging to the authenticated user (PUT /api/skills/:id)
+ */
+export async function updateSkill(
+  skillId: string,
+  data: Partial<SkillFormData>,
+  token: string
+): Promise<SkillResponse> {
+  return request<SkillResponse>(
+    `/api/skills/${encodeURIComponent(skillId)}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Deletes a skill belonging to the authenticated user (DELETE /api/skills/:id)
+ */
+export async function deleteSkill(
+  skillId: string,
+  token: string
+): Promise<DeleteSkillResponse> {
+  return request<DeleteSkillResponse>(
+    `/api/skills/${encodeURIComponent(skillId)}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+}
+
 
