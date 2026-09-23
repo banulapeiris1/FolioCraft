@@ -78,4 +78,19 @@ CREATE TABLE IF NOT EXISTS projects (
 -- Index foreign key portfolio_id for efficient portfolio project queries
 CREATE INDEX IF NOT EXISTS idx_projects_portfolio_id ON projects(portfolio_id);
 
+-- SKILLS TABLE (SKILL-01)
+-- Stores skills belonging to portfolios
+CREATE TABLE IF NOT EXISTS skills (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    portfolio_id UUID NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    order_index INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index foreign key portfolio_id for efficient portfolio skill queries
+CREATE INDEX IF NOT EXISTS idx_skills_portfolio_id ON skills(portfolio_id);
+
 
