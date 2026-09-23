@@ -419,6 +419,38 @@ test("PORTFOLIO-04: Read Portfolios HTTP API Suite (GET /api/portfolios & GET /a
     assert.match(body.message, /authentication required/i);
   });
 
+  await t.test("5b. GET /api/portfolios returns success: true, isolates User B, and orders by updated_at DESC", async () => {
+    // User B gets only User B portfolios
+    const resB = await fetch(`${baseUrl}/api/portfolios`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${userBJwt}`,
+      },
+    });
+
+    assert.equal(resB.status, 200);
+    const bodyB = (await resB.json()) as { success: boolean; portfolios: Portfolio[] };
+    assert.equal(bodyB.success, true);
+    assert.equal(bodyB.portfolios.length, 1);
+    assert.equal(bodyB.portfolios[0].id, portfolioB1Id);
+    assert.equal(bodyB.portfolios[0].userId, userBId);
+
+    // Verify User A portfolios are ordered by updated_at DESC
+    const resA = await fetch(`${baseUrl}/api/portfolios`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${userAJwt}`,
+      },
+    });
+    assert.equal(resA.status, 200);
+    const bodyA = (await resA.json()) as { success: boolean; portfolios: Portfolio[] };
+    assert.equal(bodyA.success, true);
+    assert.equal(bodyA.portfolios.length, 2);
+    const time0 = new Date(bodyA.portfolios[0].updatedAt).getTime();
+    const time1 = new Date(bodyA.portfolios[1].updatedAt).getTime();
+    assert.ok(time0 >= time1, "Portfolios must be ordered by updated_at DESC");
+  });
+
   // GET /api/portfolios/:id tests
   await t.test("6 & 7. GET /api/portfolios/:id authenticated owner receives 200 with full portfolio data", async () => {
     const res = await fetch(`${baseUrl}/api/portfolios/${portfolioA1Id}`, {

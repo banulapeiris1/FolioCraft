@@ -72,7 +72,7 @@ export class PortfolioController {
         req.user.userId
       );
 
-      res.status(200).json({ portfolios });
+      res.status(200).json({ success: true, portfolios });
     } catch (error) {
       if (error instanceof AppError) {
         res.status(error.statusCode).json({ message: error.message });

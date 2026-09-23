@@ -6,11 +6,26 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { FolioCraftLogo } from "@/components/landing/icons";
 import { SparklesIcon, ShieldCheckIcon } from "@/components/auth/AuthIcons";
+import {
+  FolderGit2Icon,
+  AlertCircleIcon,
+  PlusIcon,
+} from "@/components/portfolio/PortfolioIcons";
+import PortfolioCard, {
+  PortfolioCardSkeleton,
+} from "@/components/portfolio/PortfolioCard";
+import { getPortfolios, ApiError } from "@/lib/api";
+import { Portfolio } from "@/types/portfolio";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const { user, token, isLoading, isAuthenticated, logout } = useAuth();
   const [showPortfolioNotice, setShowPortfolioNotice] = useState(false);
+
+  // Portfolio state
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [isLoadingPortfolios, setIsLoadingPortfolios] = useState(true);
+  const [portfoliosError, setPortfoliosError] = useState<string | null>(null);
 
   // Protect route: Redirect unauthenticated users to /login
   useEffect(() => {
@@ -18,6 +33,56 @@ export default function DashboardPage() {
       router.replace("/login");
     }
   }, [isLoading, isAuthenticated, router]);
+
+  // Fetch portfolios on authentication
+  useEffect(() => {
+    let isMounted = true;
+    if (!token) return;
+
+    getPortfolios(token)
+      .then((data) => {
+        if (isMounted) {
+          setPortfolios(data.portfolios || []);
+          setPortfoliosError(null);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          if (err instanceof ApiError) {
+            setPortfoliosError(err.message || "Unable to load your portfolios.");
+          } else {
+            setPortfoliosError("Something went wrong while loading your portfolios.");
+          }
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingPortfolios(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
+
+  const handleRetry = async () => {
+    if (!token) return;
+    setIsLoadingPortfolios(true);
+    setPortfoliosError(null);
+    try {
+      const data = await getPortfolios(token);
+      setPortfolios(data.portfolios || []);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setPortfoliosError(err.message || "Unable to load your portfolios.");
+      } else {
+        setPortfoliosError("Something went wrong while loading your portfolios.");
+      }
+    } finally {
+      setIsLoadingPortfolios(false);
+    }
+  };
 
   // Loading state during auth restoration to prevent unauthenticated flash
   if (isLoading || !isAuthenticated || !user) {
@@ -155,6 +220,85 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* Your Portfolios Section */}
+        <section className="mt-8 sm:mt-10">
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0f172a]">
+                Your Portfolios
+              </h2>
+              <p className="text-xs sm:text-sm text-[#64748b] mt-0.5">
+                Manage, edit, and preview your existing developer portfolios.
+              </p>
+            </div>
+            {!isLoadingPortfolios && !portfoliosError && portfolios.length > 0 && (
+              <Link
+                href="/portfolio/create"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#6e56cf] bg-[#f3f0ff] hover:bg-[#eae4fc] border border-[#dcd3f8] transition-all hover:shadow-xs active:scale-[0.98]"
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+                <span>Create Portfolio</span>
+              </Link>
+            )}
+          </div>
+
+          {/* Loading Skeleton State */}
+          {isLoadingPortfolios ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+              <PortfolioCardSkeleton />
+              <PortfolioCardSkeleton />
+              <PortfolioCardSkeleton />
+            </div>
+          ) : portfoliosError ? (
+            /* Error State */
+            <div className="bg-white rounded-3xl border border-rose-200 p-8 sm:p-10 shadow-xs text-center max-w-lg mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mx-auto mb-4">
+                <AlertCircleIcon className="w-6 h-6" />
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-[#0f172a] mb-1">
+                Unable to load your portfolios.
+              </h3>
+              <p className="text-sm text-[#64748b] mb-6 leading-relaxed">
+                Something went wrong while loading your portfolios.
+              </p>
+              <button
+                type="button"
+                onClick={() => void handleRetry()}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-xs transition-all active:scale-[0.98] cursor-pointer"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : portfolios.length === 0 ? (
+            /* Empty State */
+            <div className="bg-white rounded-3xl border border-dashed border-[#dcd3f8] p-8 sm:p-12 text-center shadow-xs">
+              <div className="w-14 h-14 rounded-2xl bg-[#f3f0ff] border border-[#dcd3f8] flex items-center justify-center text-[#6e56cf] mx-auto mb-4">
+                <FolderGit2Icon className="w-7 h-7" />
+              </div>
+              <h3 className="text-lg font-bold text-[#0f172a] mb-1">
+                No portfolio yet
+              </h3>
+              <p className="text-sm text-[#64748b] max-w-md mx-auto leading-relaxed mb-6">
+                You haven&apos;t created a portfolio yet. Turn your CV into a
+                professional online portfolio.
+              </p>
+              <Link
+                href="/portfolio/create"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-md shadow-[#6e56cf]/25 hover:shadow-lg hover:shadow-[#6e56cf]/35 transition-all active:scale-[0.98]"
+              >
+                <span>+ Create Portfolio</span>
+              </Link>
+            </div>
+          ) : (
+            /* Responsive Grid */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+              {portfolios.map((portfolio) => (
+                <PortfolioCard key={portfolio.id} portfolio={portfolio} />
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* System Info Card */}
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">

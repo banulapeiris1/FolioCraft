@@ -51,6 +51,7 @@ export interface PortfolioResponse {
  * API response format for portfolio collection endpoints.
  */
 export interface PortfoliosResponse {
+  success?: boolean;
   portfolios: Portfolio[];
 }
 
