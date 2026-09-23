@@ -153,7 +153,7 @@ export class PortfolioService {
 
   /**
    * Retrieves all portfolios owned by a specific user.
-   * Ordered by created_at DESC.
+   * Ordered by updated_at DESC.
    */
   async getPortfoliosByUserId(userId: string): Promise<Portfolio[]> {
     if (!userId || !UUID_REGEX.test(userId)) {
@@ -164,7 +164,7 @@ export class PortfolioService {
       `SELECT ${PORTFOLIO_COLUMNS}
        FROM portfolios
        WHERE user_id = $1
-       ORDER BY created_at DESC`,
+       ORDER BY updated_at DESC`,
       [userId]
     );
 
