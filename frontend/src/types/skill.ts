@@ -35,3 +35,16 @@ export interface SkillFormErrors {
   orderIndex?: string;
   general?: string;
 }
+
+export interface CatalogSkill {
+  id: string;
+  name: string;
+  category: string;
+  iconKey?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CatalogSkillsResponse {
+  skills: CatalogSkill[];
+}

@@ -327,6 +327,7 @@ import type {
   SkillResponse,
   SkillsResponse,
   DeleteSkillResponse,
+  CatalogSkillsResponse,
 } from "../types/skill";
 
 /**
@@ -421,6 +422,28 @@ export async function deleteSkill(
       },
     }
   );
+}
+
+/**
+ * Retrieves global predefined skills from the skill catalog (GET /api/skills/catalog)
+ */
+export async function getSkillCatalog(
+  search?: string,
+  category?: string
+): Promise<CatalogSkillsResponse> {
+  const params = new URLSearchParams();
+  if (search && search.trim()) {
+    params.set("search", search.trim());
+  }
+  if (category && category.trim() && category !== "All") {
+    params.set("category", category.trim());
+  }
+  const queryString = params.toString();
+  const url = `/api/skills/catalog${queryString ? `?${queryString}` : ""}`;
+
+  return request<CatalogSkillsResponse>(url, {
+    method: "GET",
+  });
 }
 
 
