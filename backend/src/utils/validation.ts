@@ -258,5 +258,23 @@ export const updateSkillSchema = z.object({
     .optional(),
 });
 
+/**
+ * Validation schema for querying skill catalog items (SKILL-05).
+ * Search: optional string, max 100 characters.
+ * Category: optional string, max 50 characters.
+ */
+export const getSkillCatalogQuerySchema = z.object({
+  search: z
+    .string()
+    .trim()
+    .max(100, "Search query cannot exceed 100 characters")
+    .optional(),
+  category: z
+    .string()
+    .trim()
+    .max(50, "Category filter cannot exceed 50 characters")
+    .optional(),
+});
+
 
 

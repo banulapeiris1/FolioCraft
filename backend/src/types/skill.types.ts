@@ -38,3 +38,22 @@ export interface DeleteSkillResult {
   success: boolean;
   id: string;
 }
+
+/**
+ * Clean, camelCased SkillCatalogItem entity representation (SKILL-05).
+ */
+export interface SkillCatalogItem {
+  id: string;
+  name: string;
+  category: string;
+  iconKey: string | null;
+  createdAt: Date;
+}
+
+/**
+ * Filter options for querying skill catalog items.
+ */
+export interface GetSkillCatalogFilter {
+  search?: string;
+  category?: string;
+}

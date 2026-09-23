@@ -1,8 +1,14 @@
 import { Router } from "express";
 import { skillController } from "../controllers/skill.controller";
+import { skillCatalogController } from "../controllers/skillCatalog.controller";
 import { authMiddleware } from "../middleware/auth.middleware";
 
 const router = Router();
+
+// GET /api/skills/catalog - Get global skill catalog (public/unrestricted, optional search & category)
+router.get("/catalog", (req, res, next) =>
+  skillCatalogController.getCatalog(req, res, next)
+);
 
 // GET /api/skills/:id - Get a single skill by ID (authenticated, ownership-aware)
 router.get("/:id", authMiddleware, (req, res, next) =>
