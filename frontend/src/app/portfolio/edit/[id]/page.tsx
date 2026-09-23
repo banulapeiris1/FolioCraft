@@ -7,11 +7,13 @@ import { useAuth } from "@/context/AuthContext";
 import { FolioCraftLogo } from "@/components/landing/icons";
 import PortfolioForm from "@/components/portfolio/PortfolioForm";
 import ProjectManager from "@/components/project/ProjectManager";
+import SkillManager from "@/components/skill/SkillManager";
 import {
   BriefcaseIcon,
   AlertCircleIcon,
   CheckCircleIcon,
   FolderGit2Icon,
+  SparklesIcon,
 } from "@/components/portfolio/PortfolioIcons";
 import { getPortfolio, updatePortfolio, ApiError } from "@/lib/api";
 import { Portfolio, PortfolioFormData } from "@/types/portfolio";
@@ -27,7 +29,7 @@ export default function EditPortfolioPage({
   const router = useRouter();
   const { user, token, isLoading, isAuthenticated, logout } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<"profile" | "projects">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "projects" | "skills">("profile");
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -48,8 +50,11 @@ export default function EditPortfolioPage({
   useEffect(() => {
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get("tab") === "projects") {
-        setActiveTab("projects");
+      const tabParam = urlParams.get("tab");
+      if (tabParam === "projects" || tabParam === "skills" || tabParam === "profile") {
+        queueMicrotask(() => {
+          setActiveTab(tabParam);
+        });
       }
     }
   }, []);
@@ -281,22 +286,31 @@ export default function EditPortfolioPage({
                       <BriefcaseIcon className="w-3.5 h-3.5" />
                       <span>Portfolio Settings</span>
                     </>
-                  ) : (
+                  ) : activeTab === "projects" ? (
                     <>
                       <FolderGit2Icon className="w-3.5 h-3.5" />
                       <span>Project Management</span>
+                    </>
+                  ) : (
+                    <>
+                      <SparklesIcon className="w-3.5 h-3.5" />
+                      <span>Skills Management</span>
                     </>
                   )}
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a]">
                   {activeTab === "profile"
                     ? "Edit Portfolio Information"
-                    : "Manage Projects"}
+                    : activeTab === "projects"
+                    ? "Manage Projects"
+                    : "Manage Skills"}
                 </h1>
                 <p className="mt-1.5 text-sm text-[#64748b] max-w-2xl">
                   {activeTab === "profile"
                     ? "Modify your personal profile, contact channels, public handle, and template theme."
-                    : "Showcase your best engineering work, web apps, and open-source contributions."}
+                    : activeTab === "projects"
+                    ? "Showcase your best engineering work, web apps, and open-source contributions."
+                    : "Highlight your technical proficiencies, frameworks, libraries, and tools."}
                 </p>
               </div>
               <div className="text-xs font-mono text-[#64748b] bg-white border border-[#eae6f5] px-3 py-1.5 rounded-xl self-start sm:self-auto">
@@ -330,6 +344,18 @@ export default function EditPortfolioPage({
                 <FolderGit2Icon className="w-3.5 h-3.5" />
                 <span>Projects</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("skills")}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+                  activeTab === "skills"
+                    ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
+                    : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
+                }`}
+              >
+                <SparklesIcon className="w-3.5 h-3.5" />
+                <span>Skills</span>
+              </button>
             </div>
 
             {/* Success Feedback Alert */}
@@ -362,8 +388,10 @@ export default function EditPortfolioPage({
                 onSubmit={handleUpdate}
                 onCancel={() => router.push("/dashboard")}
               />
-            ) : (
+            ) : activeTab === "projects" ? (
               <ProjectManager portfolioId={portfolioId} />
+            ) : (
+              <SkillManager portfolioId={portfolioId} />
             )}
           </>
         )}
