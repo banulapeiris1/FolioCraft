@@ -140,3 +140,21 @@ INSERT INTO skill_catalog (name, category) VALUES
     ('Figma', 'Tools'),
     ('Jira', 'Tools')
 ON CONFLICT (name) DO NOTHING;
+
+-- EDUCATION TABLE (EDU-02)
+-- Stores education records belonging to portfolios
+CREATE TABLE IF NOT EXISTS education (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    portfolio_id UUID NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
+    institution VARCHAR(255) NOT NULL,
+    degree VARCHAR(255) NOT NULL,
+    field VARCHAR(255) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index foreign key portfolio_id for efficient portfolio education queries
+CREATE INDEX IF NOT EXISTS idx_education_portfolio_id ON education(portfolio_id);
