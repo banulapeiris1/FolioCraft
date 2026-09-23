@@ -78,4 +78,65 @@ CREATE TABLE IF NOT EXISTS projects (
 -- Index foreign key portfolio_id for efficient portfolio project queries
 CREATE INDEX IF NOT EXISTS idx_projects_portfolio_id ON projects(portfolio_id);
 
+-- SKILLS TABLE (SKILL-01)
+-- Stores skills belonging to portfolios
+CREATE TABLE IF NOT EXISTS skills (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    portfolio_id UUID NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    order_index INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
+-- Index foreign key portfolio_id for efficient portfolio skill queries
+CREATE INDEX IF NOT EXISTS idx_skills_portfolio_id ON skills(portfolio_id);
+
+-- SKILL CATALOG TABLE (SKILL-05)
+-- Global predefined skill catalog shared across all users
+CREATE TABLE IF NOT EXISTS skill_catalog (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    category VARCHAR(50) NOT NULL,
+    icon_key VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index category for efficient catalog category filtering
+CREATE INDEX IF NOT EXISTS idx_skill_catalog_category ON skill_catalog(category);
+
+-- INITIAL SEED DATA FOR SKILL CATALOG (SKILL-05)
+INSERT INTO skill_catalog (name, category) VALUES
+    ('React', 'Frontend'),
+    ('Next.js', 'Frontend'),
+    ('Vue.js', 'Frontend'),
+    ('Angular', 'Frontend'),
+    ('HTML', 'Frontend'),
+    ('CSS', 'Frontend'),
+    ('Tailwind CSS', 'Frontend'),
+    ('JavaScript', 'Frontend'),
+    ('TypeScript', 'Frontend'),
+    ('Node.js', 'Backend'),
+    ('Express.js', 'Backend'),
+    ('Flask', 'Backend'),
+    ('Django', 'Backend'),
+    ('Spring Boot', 'Backend'),
+    ('Laravel', 'Backend'),
+    ('PostgreSQL', 'Database'),
+    ('MySQL', 'Database'),
+    ('MongoDB', 'Database'),
+    ('Redis', 'Database'),
+    ('Supabase', 'Database'),
+    ('Docker', 'Cloud & DevOps'),
+    ('Kubernetes', 'Cloud & DevOps'),
+    ('AWS', 'Cloud & DevOps'),
+    ('Azure', 'Cloud & DevOps'),
+    ('Google Cloud', 'Cloud & DevOps'),
+    ('GitHub Actions', 'Cloud & DevOps'),
+    ('Git', 'Tools'),
+    ('GitHub', 'Tools'),
+    ('Postman', 'Tools'),
+    ('Figma', 'Tools'),
+    ('Jira', 'Tools')
+ON CONFLICT (name) DO NOTHING;

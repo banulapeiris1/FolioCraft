@@ -212,5 +212,69 @@ export const updateProjectSchema = z.object({
     .optional(),
 });
 
+/**
+ * Validation schema for creating a new skill under a portfolio (SKILL-02).
+ * Enforces presence of name (max 100) and category (max 50); optional orderIndex.
+ */
+export const createSkillSchema = z.object({
+  name: z
+    .string({ message: "Name is required" })
+    .trim()
+    .min(1, "Name is required")
+    .max(100, "Name cannot exceed 100 characters"),
+  category: z
+    .string({ message: "Category is required" })
+    .trim()
+    .min(1, "Category is required")
+    .max(50, "Category cannot exceed 50 characters"),
+  orderIndex: z
+    .number({ message: "Order index must be a number" })
+    .int("Order index must be an integer")
+    .min(0, "Order index cannot be negative")
+    .optional(),
+});
+
+/**
+ * Validation schema for updating an existing skill (SKILL-02).
+ * All fields are optional. Enforces type correctness and length limits.
+ */
+export const updateSkillSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name cannot be empty")
+    .max(100, "Name cannot exceed 100 characters")
+    .optional(),
+  category: z
+    .string()
+    .trim()
+    .min(1, "Category cannot be empty")
+    .max(50, "Category cannot exceed 50 characters")
+    .optional(),
+  orderIndex: z
+    .number({ message: "Order index must be a number" })
+    .int("Order index must be an integer")
+    .min(0, "Order index cannot be negative")
+    .optional(),
+});
+
+/**
+ * Validation schema for querying skill catalog items (SKILL-05).
+ * Search: optional string, max 100 characters.
+ * Category: optional string, max 50 characters.
+ */
+export const getSkillCatalogQuerySchema = z.object({
+  search: z
+    .string()
+    .trim()
+    .max(100, "Search query cannot exceed 100 characters")
+    .optional(),
+  category: z
+    .string()
+    .trim()
+    .max(50, "Category filter cannot exceed 50 characters")
+    .optional(),
+});
+
 
 

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { portfolioController } from "../controllers/portfolio.controller";
 import { projectController } from "../controllers/project.controller";
+import { skillController } from "../controllers/skill.controller";
 import { authMiddleware } from "../middleware/auth.middleware";
 
 const router = Router();
@@ -38,6 +39,16 @@ router.post("/:id/projects", authMiddleware, (req, res, next) =>
 // GET /api/portfolios/:id/projects - Get all projects for portfolio (authenticated)
 router.get("/:id/projects", authMiddleware, (req, res, next) =>
   projectController.getProjectsByPortfolio(req, res, next)
+);
+
+// POST /api/portfolios/:id/skills - Create a new skill under portfolio (authenticated)
+router.post("/:id/skills", authMiddleware, (req, res, next) =>
+  skillController.createSkill(req, res, next)
+);
+
+// GET /api/portfolios/:id/skills - Get all skills for portfolio (authenticated)
+router.get("/:id/skills", authMiddleware, (req, res, next) =>
+  skillController.getSkills(req, res, next)
 );
 
 export const portfolioRoutes = router;
