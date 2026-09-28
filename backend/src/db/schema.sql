@@ -140,3 +140,22 @@ INSERT INTO skill_catalog (name, category) VALUES
     ('Figma', 'Tools'),
     ('Jira', 'Tools')
 ON CONFLICT (name) DO NOTHING;
+
+-- EXPERIENCE TABLE (EXP-02)
+-- Stores work experience records belonging to portfolios
+CREATE TABLE IF NOT EXISTS experience (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    portfolio_id UUID NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
+    company VARCHAR(255) NOT NULL,
+    position VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE,
+    is_current BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index foreign key portfolio_id for efficient portfolio experience queries
+CREATE INDEX IF NOT EXISTS idx_experience_portfolio_id ON experience(portfolio_id);
+
