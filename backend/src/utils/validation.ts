@@ -276,5 +276,140 @@ export const getSkillCatalogQuerySchema = z.object({
     .optional(),
 });
 
+/**
+ * Strictly validates that a string is a real calendar date in YYYY-MM-DD format.
+ * Prevents JavaScript Date overflow/rollover (e.g., February 31st rolling into March).
+ */
+export function isValidCalendarDate(val: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    return false;
+  }
+  const [yearStr, monthStr, dayStr] = val.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return false;
+  }
+
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return (
+    d.getUTCFullYear() === year &&
+    d.getUTCMonth() === month - 1 &&
+    d.getUTCDate() === day
+  );
+}
+
+/**
+ * Validation schema for creating a new experience record under a portfolio (EXP-03).
+ * Enforces presence of company, position, valid startDate (YYYY-MM-DD), and boolean isCurrent.
+ * endDate is optional/nullable; if provided, must be on or after startDate.
+ */
+export const createExperienceSchema = z
+  .object({
+    company: z
+      .string({ message: "Company is required" })
+      .trim()
+      .min(1, "Company is required")
+      .max(255, "Company cannot exceed 255 characters"),
+    position: z
+      .string({ message: "Position is required" })
+      .trim()
+      .min(1, "Position is required")
+      .max(255, "Position cannot exceed 255 characters"),
+    description: z
+      .string()
+      .trim()
+      .max(2000, "Description cannot exceed 2000 characters")
+      .optional()
+      .nullable(),
+    startDate: z
+      .string({ message: "Start date is required" })
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Start date must be in YYYY-MM-DD format")
+      .refine(isValidCalendarDate, "Invalid calendar start date"),
+    endDate: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "End date must be in YYYY-MM-DD format")
+      .refine(isValidCalendarDate, "Invalid calendar end date")
+      .or(z.literal(""))
+      .optional()
+      .nullable(),
+    isCurrent: z.boolean().default(false).optional(),
+  })
+  .refine(
+    (data) => {
+      if (!data.endDate || data.endDate === "") return true;
+      return data.endDate >= data.startDate;
+    },
+    {
+      message: "End date must be on or after start date",
+      path: ["endDate"],
+    }
+  );
+
+/**
+ * Validation schema for updating an existing experience record (EXP-03).
+ * All fields are optional. Enforces type correctness, length limits, and date consistency
+ * when both dates are present in the update payload.
+ */
+export const updateExperienceSchema = z
+  .object({
+    company: z
+      .string()
+      .trim()
+      .min(1, "Company cannot be empty")
+      .max(255, "Company cannot exceed 255 characters")
+      .optional(),
+    position: z
+      .string()
+      .trim()
+      .min(1, "Position cannot be empty")
+      .max(255, "Position cannot exceed 255 characters")
+      .optional(),
+    description: z
+      .string()
+      .trim()
+      .max(2000, "Description cannot exceed 2000 characters")
+      .optional()
+      .nullable(),
+    startDate: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Start date must be in YYYY-MM-DD format")
+      .refine(isValidCalendarDate, "Invalid calendar start date")
+      .optional(),
+    endDate: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "End date must be in YYYY-MM-DD format")
+      .refine(isValidCalendarDate, "Invalid calendar end date")
+      .or(z.literal(""))
+      .optional()
+      .nullable(),
+    isCurrent: z.boolean().optional(),
+  })
+  .refine(
+    (data) => Object.keys(data).length > 0,
+    {
+      message: "No fields provided for update",
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.startDate && data.endDate && data.endDate !== "") {
+        return data.endDate >= data.startDate;
+      }
+      return true;
+    },
+    {
+      message: "End date must be on or after start date",
+      path: ["endDate"],
+    }
+  );
+
+
 
 

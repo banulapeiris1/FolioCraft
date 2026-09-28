@@ -446,4 +446,106 @@ export async function getSkillCatalog(
   });
 }
 
+import type {
+  ExperienceFormData,
+  ExperienceResponse,
+  ExperiencesResponse,
+  DeleteExperienceResponse,
+} from "../types/experience";
+
+/**
+ * Creates a new experience record under a portfolio for the authenticated user (POST /api/portfolios/:id/experience)
+ */
+export async function createExperience(
+  portfolioId: string,
+  data: ExperienceFormData,
+  token: string
+): Promise<ExperienceResponse> {
+  return request<ExperienceResponse>(
+    `/api/portfolios/${encodeURIComponent(portfolioId)}/experience`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Retrieves all experience records belonging to a portfolio (GET /api/portfolios/:id/experience)
+ */
+export async function getExperiences(
+  portfolioId: string,
+  token: string
+): Promise<ExperiencesResponse> {
+  return request<ExperiencesResponse>(
+    `/api/portfolios/${encodeURIComponent(portfolioId)}/experience`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+}
+
+/**
+ * Retrieves a single experience record by ID (GET /api/experience/:id)
+ */
+export async function getExperience(
+  experienceId: string,
+  token: string
+): Promise<ExperienceResponse> {
+  return request<ExperienceResponse>(
+    `/api/experience/${encodeURIComponent(experienceId)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+}
+
+/**
+ * Updates an existing experience record belonging to the authenticated user (PUT /api/experience/:id)
+ */
+export async function updateExperience(
+  experienceId: string,
+  data: Partial<ExperienceFormData>,
+  token: string
+): Promise<ExperienceResponse> {
+  return request<ExperienceResponse>(
+    `/api/experience/${encodeURIComponent(experienceId)}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Deletes an experience record belonging to the authenticated user (DELETE /api/experience/:id)
+ */
+export async function deleteExperience(
+  experienceId: string,
+  token: string
+): Promise<DeleteExperienceResponse> {
+  return request<DeleteExperienceResponse>(
+    `/api/experience/${encodeURIComponent(experienceId)}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+}
+
+
 
