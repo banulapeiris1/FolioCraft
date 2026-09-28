@@ -8,6 +8,7 @@ import { FolioCraftLogo } from "@/components/landing/icons";
 import PortfolioForm from "@/components/portfolio/PortfolioForm";
 import ProjectManager from "@/components/project/ProjectManager";
 import SkillManager from "@/components/skill/SkillManager";
+import ExperienceManager from "@/components/experience/ExperienceManager";
 import {
   BriefcaseIcon,
   AlertCircleIcon,
@@ -29,7 +30,7 @@ export default function EditPortfolioPage({
   const router = useRouter();
   const { user, token, isLoading, isAuthenticated, logout } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<"profile" | "projects" | "skills">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "projects" | "skills" | "experience">("profile");
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -51,7 +52,7 @@ export default function EditPortfolioPage({
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const tabParam = urlParams.get("tab");
-      if (tabParam === "projects" || tabParam === "skills" || tabParam === "profile") {
+      if (tabParam === "projects" || tabParam === "skills" || tabParam === "profile" || tabParam === "experience") {
         queueMicrotask(() => {
           setActiveTab(tabParam);
         });
@@ -291,10 +292,15 @@ export default function EditPortfolioPage({
                       <FolderGit2Icon className="w-3.5 h-3.5" />
                       <span>Project Management</span>
                     </>
-                  ) : (
+                  ) : activeTab === "skills" ? (
                     <>
                       <SparklesIcon className="w-3.5 h-3.5" />
                       <span>Skills Management</span>
+                    </>
+                  ) : (
+                    <>
+                      <BriefcaseIcon className="w-3.5 h-3.5" />
+                      <span>Experience Management</span>
                     </>
                   )}
                 </div>
@@ -303,14 +309,18 @@ export default function EditPortfolioPage({
                     ? "Edit Portfolio Information"
                     : activeTab === "projects"
                     ? "Manage Projects"
-                    : "Manage Skills"}
+                    : activeTab === "skills"
+                    ? "Manage Skills"
+                    : "Manage Work Experience"}
                 </h1>
                 <p className="mt-1.5 text-sm text-[#64748b] max-w-2xl">
                   {activeTab === "profile"
                     ? "Modify your personal profile, contact channels, public handle, and template theme."
                     : activeTab === "projects"
                     ? "Showcase your best engineering work, web apps, and open-source contributions."
-                    : "Highlight your technical proficiencies, frameworks, libraries, and tools."}
+                    : activeTab === "skills"
+                    ? "Highlight your technical proficiencies, frameworks, libraries, and tools."
+                    : "Detail your employment history, career roles, and professional achievements."}
                 </p>
               </div>
               <div className="text-xs font-mono text-[#64748b] bg-white border border-[#eae6f5] px-3 py-1.5 rounded-xl self-start sm:self-auto">
@@ -356,6 +366,18 @@ export default function EditPortfolioPage({
                 <SparklesIcon className="w-3.5 h-3.5" />
                 <span>Skills</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("experience")}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+                  activeTab === "experience"
+                    ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
+                    : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
+                }`}
+              >
+                <BriefcaseIcon className="w-3.5 h-3.5" />
+                <span>Experience</span>
+              </button>
             </div>
 
             {/* Success Feedback Alert */}
@@ -390,8 +412,10 @@ export default function EditPortfolioPage({
               />
             ) : activeTab === "projects" ? (
               <ProjectManager portfolioId={portfolioId} />
-            ) : (
+            ) : activeTab === "skills" ? (
               <SkillManager portfolioId={portfolioId} />
+            ) : (
+              <ExperienceManager portfolioId={portfolioId} />
             )}
           </>
         )}
