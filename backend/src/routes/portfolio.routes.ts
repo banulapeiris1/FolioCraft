@@ -2,6 +2,7 @@ import { Router } from "express";
 import { portfolioController } from "../controllers/portfolio.controller";
 import { projectController } from "../controllers/project.controller";
 import { skillController } from "../controllers/skill.controller";
+import { experienceController } from "../controllers/experience.controller";
 import { authMiddleware } from "../middleware/auth.middleware";
 
 const router = Router();
@@ -51,7 +52,24 @@ router.get("/:id/skills", authMiddleware, (req, res, next) =>
   skillController.getSkills(req, res, next)
 );
 
+// POST /api/portfolios/:id/experience - Create a new experience record under portfolio (authenticated)
+router.post("/:id/experience", authMiddleware, (req, res, next) =>
+  experienceController.createExperience(req, res, next)
+);
+router.post("/:id/experiences", authMiddleware, (req, res, next) =>
+  experienceController.createExperience(req, res, next)
+);
+
+// GET /api/portfolios/:id/experience - Get all experience records for portfolio (authenticated)
+router.get("/:id/experience", authMiddleware, (req, res, next) =>
+  experienceController.getExperiencesByPortfolio(req, res, next)
+);
+router.get("/:id/experiences", authMiddleware, (req, res, next) =>
+  experienceController.getExperiencesByPortfolio(req, res, next)
+);
+
 export const portfolioRoutes = router;
+
 
 
 

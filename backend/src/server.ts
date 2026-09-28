@@ -6,6 +6,7 @@ import { authRoutes } from "./routes/auth.routes";
 import { portfolioRoutes } from "./routes/portfolio.routes";
 import { projectRoutes } from "./routes/project.routes";
 import { skillRoutes } from "./routes/skill.routes";
+import { experienceRoutes } from "./routes/experience.routes";
 import { errorHandler } from "./middleware/error.middleware";
 
 export const app = express();
@@ -25,8 +26,11 @@ app.use("/api/auth", authRoutes);
 app.use("/api/portfolios", portfolioRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/skills", skillRoutes);
+app.use("/api/experience", experienceRoutes);
+app.use("/api/experiences", experienceRoutes);
 
 app.use(errorHandler);
+
 
 
 const isTest =
