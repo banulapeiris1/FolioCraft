@@ -52,3 +52,69 @@ export interface DetectedCvSections {
   rawText: string;
 }
 
+/**
+ * Structured candidate personal and contact information (CV-06).
+ */
+export interface StructuredCvPersonal {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  website?: string;
+  linkedin?: string;
+  github?: string;
+  summary?: string;
+}
+
+/**
+ * Structured employment/work experience entry (CV-06).
+ */
+export interface StructuredCvExperience {
+  company: string;
+  position: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  isCurrent: boolean;
+}
+
+/**
+ * Structured academic/education entry (CV-06).
+ */
+export interface StructuredCvEducation {
+  institution: string;
+  degree?: string;
+  field?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+/**
+ * Structured skill entry (CV-06).
+ */
+export interface StructuredCvSkill {
+  name: string;
+}
+
+/**
+ * Structured project entry (CV-06).
+ */
+export interface StructuredCvProject {
+  title: string;
+  description?: string;
+  technologies: string[];
+}
+
+/**
+ * Complete structured output of the CV-06 extraction pipeline.
+ */
+export interface StructuredCvData {
+  personal: StructuredCvPersonal;
+  experience: StructuredCvExperience[];
+  education: StructuredCvEducation[];
+  skills: StructuredCvSkill[];
+  projects: StructuredCvProject[];
+}
+
+
