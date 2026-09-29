@@ -26,3 +26,29 @@ export interface CvUpload {
   createdAt: Date;
   updatedAt: Date;
 }
+
+/**
+ * Core logical section categories recognized during CV section detection (CV-05).
+ */
+export type CvSectionType =
+  | "summary"
+  | "experience"
+  | "education"
+  | "skills"
+  | "projects";
+
+/**
+ * Structured output of the deterministic CV section detection process (CV-05).
+ */
+export interface DetectedCvSections {
+  summary?: string;
+  experience?: string;
+  education?: string;
+  skills?: string;
+  projects?: string;
+  headerText?: string;
+  unknownSections?: Record<string, string>;
+  detectedOrder: CvSectionType[];
+  rawText: string;
+}
+
