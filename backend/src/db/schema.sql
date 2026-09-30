@@ -159,3 +159,27 @@ CREATE TABLE IF NOT EXISTS experience (
 -- Index foreign key portfolio_id for efficient portfolio experience queries
 CREATE INDEX IF NOT EXISTS idx_experience_portfolio_id ON experience(portfolio_id);
 
+-- CV UPLOADS TABLE (CV-02)
+-- Stores uploaded CV documents, parsing status, extracted raw text, and structured data
+CREATE TABLE IF NOT EXISTS cv_uploads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    portfolio_id UUID REFERENCES portfolios(id) ON DELETE SET NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_size INT NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'UPLOADED'
+        CHECK (status IN ('UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED')),
+    raw_text TEXT,
+    parsed_data JSONB DEFAULT '{}'::jsonb,
+    error_message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_cv_uploads_user_id
+    ON cv_uploads(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_cv_uploads_portfolio_id
+    ON cv_uploads(portfolio_id);
+

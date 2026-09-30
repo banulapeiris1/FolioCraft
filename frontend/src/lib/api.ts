@@ -74,8 +74,9 @@ async function request<T>(
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(options.headers as Record<string, string> | undefined),
   };
 
@@ -547,5 +548,32 @@ export async function deleteExperience(
   );
 }
 
+import type { CvUploadResponse } from "../types/cv";
 
+/**
+ * Uploads a CV PDF document for automated parsing and extraction (POST /api/cv/upload).
+ * Sends multipart/form-data with the PDF file and optional portfolioId.
+ */
+export async function uploadCv(
+  file: File,
+  portfolioId?: string | null,
+  token?: string
+): Promise<CvUploadResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
 
+  if (portfolioId && portfolioId.trim()) {
+    formData.append("portfolioId", portfolioId.trim());
+  }
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return request<CvUploadResponse>("/api/cv/upload", {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+}
