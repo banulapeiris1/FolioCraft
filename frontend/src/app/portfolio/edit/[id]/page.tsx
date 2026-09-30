@@ -9,12 +9,14 @@ import PortfolioForm from "@/components/portfolio/PortfolioForm";
 import ProjectManager from "@/components/project/ProjectManager";
 import SkillManager from "@/components/skill/SkillManager";
 import ExperienceManager from "@/components/experience/ExperienceManager";
+import CvUploadManager from "@/components/cv/CvUploadManager";
 import {
   BriefcaseIcon,
   AlertCircleIcon,
   CheckCircleIcon,
   FolderGit2Icon,
   SparklesIcon,
+  FileTextIcon,
 } from "@/components/portfolio/PortfolioIcons";
 import { getPortfolio, updatePortfolio, ApiError } from "@/lib/api";
 import { Portfolio, PortfolioFormData } from "@/types/portfolio";
@@ -30,7 +32,7 @@ export default function EditPortfolioPage({
   const router = useRouter();
   const { user, token, isLoading, isAuthenticated, logout } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<"profile" | "projects" | "skills" | "experience">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "projects" | "skills" | "experience" | "cv">("profile");
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -52,9 +54,9 @@ export default function EditPortfolioPage({
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const tabParam = urlParams.get("tab");
-      if (tabParam === "projects" || tabParam === "skills" || tabParam === "profile" || tabParam === "experience") {
+      if (tabParam === "projects" || tabParam === "skills" || tabParam === "profile" || tabParam === "experience" || tabParam === "cv" || tabParam === "cv-import") {
         queueMicrotask(() => {
-          setActiveTab(tabParam);
+          setActiveTab(tabParam === "cv-import" ? "cv" : (tabParam as "profile" | "projects" | "skills" | "experience" | "cv"));
         });
       }
     }
@@ -297,10 +299,15 @@ export default function EditPortfolioPage({
                       <SparklesIcon className="w-3.5 h-3.5" />
                       <span>Skills Management</span>
                     </>
-                  ) : (
+                  ) : activeTab === "experience" ? (
                     <>
                       <BriefcaseIcon className="w-3.5 h-3.5" />
                       <span>Experience Management</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileTextIcon className="w-3.5 h-3.5" />
+                      <span>CV Import & Parsing</span>
                     </>
                   )}
                 </div>
@@ -311,7 +318,9 @@ export default function EditPortfolioPage({
                     ? "Manage Projects"
                     : activeTab === "skills"
                     ? "Manage Skills"
-                    : "Manage Work Experience"}
+                    : activeTab === "experience"
+                    ? "Manage Work Experience"
+                    : "Import from CV"}
                 </h1>
                 <p className="mt-1.5 text-sm text-[#64748b] max-w-2xl">
                   {activeTab === "profile"
@@ -320,7 +329,9 @@ export default function EditPortfolioPage({
                     ? "Showcase your best engineering work, web apps, and open-source contributions."
                     : activeTab === "skills"
                     ? "Highlight your technical proficiencies, frameworks, libraries, and tools."
-                    : "Detail your employment history, career roles, and professional achievements."}
+                    : activeTab === "experience"
+                    ? "Detail your employment history, career roles, and professional achievements."
+                    : "Upload your CV in PDF format to parse and extract your profile info, experience, education, skills, and projects."}
                 </p>
               </div>
               <div className="text-xs font-mono text-[#64748b] bg-white border border-[#eae6f5] px-3 py-1.5 rounded-xl self-start sm:self-auto">
@@ -378,6 +389,18 @@ export default function EditPortfolioPage({
                 <BriefcaseIcon className="w-3.5 h-3.5" />
                 <span>Experience</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("cv")}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+                  activeTab === "cv"
+                    ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
+                    : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
+                }`}
+              >
+                <FileTextIcon className="w-3.5 h-3.5" />
+                <span>CV Import</span>
+              </button>
             </div>
 
             {/* Success Feedback Alert */}
@@ -414,8 +437,10 @@ export default function EditPortfolioPage({
               <ProjectManager portfolioId={portfolioId} />
             ) : activeTab === "skills" ? (
               <SkillManager portfolioId={portfolioId} />
-            ) : (
+            ) : activeTab === "experience" ? (
               <ExperienceManager portfolioId={portfolioId} />
+            ) : (
+              <CvUploadManager portfolioId={portfolioId} />
             )}
           </>
         )}
