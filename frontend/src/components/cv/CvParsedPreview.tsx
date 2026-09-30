@@ -18,12 +18,16 @@ interface CvParsedPreviewProps {
   data: StructuredCvData;
   uploadId?: string;
   fileName?: string;
+  onOpenImport?: () => void;
+  isPreparingImport?: boolean;
 }
 
 export default function CvParsedPreview({
   data,
   uploadId,
   fileName,
+  onOpenImport,
+  isPreparingImport = false,
 }: CvParsedPreviewProps) {
   const { personal, experience, education, skills, projects } = data;
 
@@ -38,22 +42,47 @@ export default function CvParsedPreview({
 
   return (
     <div className="space-y-6">
-      {/* Notice Banner */}
-      <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-xs text-amber-900 flex items-start gap-3">
-        <span className="text-amber-600 text-base leading-none">💡</span>
-        <div>
-          <span className="font-bold text-amber-950">CV Data Preview Only (CV-08):</span>
-          <p className="mt-0.5 text-amber-800">
-            Below is the structured data parsed from your CV document. This preview has{" "}
-            <strong>not</strong> modified your portfolio fields. Applying and pre-filling this
-            data into your portfolio will be handled in CV-09.
-          </p>
-          {uploadId && (
-            <p className="mt-1 text-[11px] font-mono text-amber-700">
-              Upload Reference: {uploadId} {fileName ? `(${fileName})` : ""}
+      {/* Notice Banner & Import Trigger */}
+      <div className="rounded-3xl bg-[#f8f6fe] border border-[#e4daf7] p-5 text-xs text-[#0f172a] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#f3f0ff] text-[#6e56cf] flex items-center justify-center shrink-0 border border-[#dcd3f8]">
+            <SparklesIcon className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="font-bold text-sm text-[#0f172a] block">
+              CV Data Extracted &amp; Ready for Import
+            </span>
+            <p className="mt-0.5 text-[#64748b] leading-relaxed">
+              Review your extracted details below. Click <strong>Import to Portfolio</strong> to select sections and safely pre-fill your portfolio records.
             </p>
-          )}
+            {uploadId && (
+              <p className="mt-1 text-[11px] font-mono text-[#94a3b8]">
+                Upload Ref: {uploadId} {fileName ? `(${fileName})` : ""}
+              </p>
+            )}
+          </div>
         </div>
+
+        {onOpenImport && (
+          <button
+            type="button"
+            onClick={onOpenImport}
+            disabled={isPreparingImport}
+            className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-sm shadow-[#6e56cf]/25 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0 self-start sm:self-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isPreparingImport ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Loading Portfolio Items...</span>
+              </>
+            ) : (
+              <>
+                <SparklesIcon className="w-4 h-4" />
+                <span>Import to Portfolio</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* 1. Personal Information & Summary */}

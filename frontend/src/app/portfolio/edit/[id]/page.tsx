@@ -440,7 +440,15 @@ export default function EditPortfolioPage({
             ) : activeTab === "experience" ? (
               <ExperienceManager portfolioId={portfolioId} />
             ) : (
-              <CvUploadManager portfolioId={portfolioId} />
+              <CvUploadManager
+                portfolioId={portfolioId}
+                portfolio={portfolio}
+                onProfileUpdated={(updated) => {
+                  setPortfolio(updated);
+                  setSuccessFeedback("CV profile data has been imported into your portfolio form. Review and save your changes.");
+                }}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+              />
             )}
           </>
         )}

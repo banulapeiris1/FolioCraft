@@ -2,22 +2,51 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { uploadCv, ApiError } from "@/lib/api";
+import {
+  uploadCv,
+  getExperiences,
+  createExperience,
+  getSkills,
+  createSkill,
+  getSkillCatalog,
+  getProjects,
+  createProject,
+  updatePortfolio,
+  ApiError,
+} from "@/lib/api";
 import { validateCvFile } from "@/lib/cvValidation";
 import { CvUiState, StructuredCvData } from "@/types/cv";
+import type { Portfolio, PortfolioFormData } from "@/types/portfolio";
+import type { Experience } from "@/types/experience";
+import type { Skill, CatalogSkill } from "@/types/skill";
+import type { Project } from "@/types/project";
 import CvDropzone from "./CvDropzone";
 import CvParsedPreview from "./CvParsedPreview";
+import CvImportModal, { ImportSummaryResult } from "./CvImportModal";
 import {
   AlertCircleIcon,
   CheckCircleIcon,
   SparklesIcon,
 } from "@/components/portfolio/PortfolioIcons";
+import {
+  PreparedExperience,
+  PreparedSkill,
+  PreparedProject,
+} from "@/lib/cv/cvMapping";
 
 export interface CvUploadManagerProps {
   portfolioId: string;
+  portfolio?: Portfolio | null;
+  onProfileUpdated?: (updatedPortfolio: Portfolio) => void;
+  onNavigateTab?: (tab: "profile" | "projects" | "skills" | "experience" | "cv") => void;
 }
 
-export default function CvUploadManager({ portfolioId }: CvUploadManagerProps) {
+export default function CvUploadManager({
+  portfolioId,
+  portfolio = null,
+  onProfileUpdated,
+  onNavigateTab,
+}: CvUploadManagerProps) {
   const { token } = useAuth();
 
   const [uiState, setUiState] = useState<CvUiState>("IDLE");
@@ -32,6 +61,15 @@ export default function CvUploadManager({ portfolioId }: CvUploadManagerProps) {
     status: string;
     fileName: string;
   } | null>(null);
+
+  // Import Modal State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [existingExperiences, setExistingExperiences] = useState<Experience[]>([]);
+  const [existingSkills, setExistingSkills] = useState<Skill[]>([]);
+  const [existingProjects, setExistingProjects] = useState<Project[]>([]);
+  const [catalogSkills, setCatalogSkills] = useState<CatalogSkill[]>([]);
+  const [isPreparingImport, setIsPreparingImport] = useState(false);
+  const [importPreparationError, setImportPreparationError] = useState<string | null>(null);
 
   // File selection & client-side validation
   const handleFileSelect = (file: File) => {
@@ -60,7 +98,6 @@ export default function CvUploadManager({ portfolioId }: CvUploadManagerProps) {
 
   // Perform upload
   const handleUpload = async () => {
-    // Prevent duplicate upload or missing prerequisites
     if (uiState === "UPLOADING" || uiState === "PROCESSING") return;
 
     if (!selectedFile) {
@@ -68,7 +105,6 @@ export default function CvUploadManager({ portfolioId }: CvUploadManagerProps) {
       return;
     }
 
-    // Re-verify client validation
     const validation = validateCvFile(selectedFile);
     if (!validation.isValid) {
       setValidationError(validation.error || "Invalid file.");
@@ -81,14 +117,12 @@ export default function CvUploadManager({ portfolioId }: CvUploadManagerProps) {
       return;
     }
 
-    // Begin upload state
     setUiState("UPLOADING");
     setProcessingStage("Uploading CV document to server...");
     setServerError(null);
     setValidationError(null);
 
     try {
-      // Simulate quick progression to PROCESSING message for user clarity
       const processingTimer = setTimeout(() => {
         setUiState((current) => {
           if (current === "UPLOADING") {
@@ -127,7 +161,169 @@ export default function CvUploadManager({ portfolioId }: CvUploadManagerProps) {
     }
   };
 
-  // Reset to upload another file
+  // Open Import Review Dialog after fetching current portfolio state for deduplication
+  const handleOpenImportModal = async () => {
+    if (!parsedData || !token) return;
+
+    setIsPreparingImport(true);
+    setImportPreparationError(null);
+
+    try {
+      // Parallel fetch of existing items and skill catalog using existing API methods
+      const [expRes, skillsRes, projRes, catalogRes] = await Promise.all([
+        getExperiences(portfolioId, token).catch(() => ({ experience: [] })),
+        getSkills(portfolioId, token).catch(() => ({ skills: [] })),
+        getProjects(portfolioId, token).catch(() => ({ projects: [] })),
+        getSkillCatalog().catch(() => ({ skills: [] })),
+      ]);
+
+      setExistingExperiences(
+        ("experiences" in expRes && expRes.experiences) ? expRes.experiences : (expRes.experience || [])
+      );
+      setExistingSkills(skillsRes.skills || []);
+      setExistingProjects(projRes.projects || []);
+      setCatalogSkills(catalogRes.skills || []);
+
+      setIsImportModalOpen(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to load existing portfolio items.";
+      setImportPreparationError(msg);
+    } finally {
+      setIsPreparingImport(false);
+    }
+  };
+
+  // Execute actual import upon confirmation from CvImportModal
+  const handleConfirmImport = async ({
+    profileData,
+    selectedExperiences,
+    selectedSkills,
+    selectedProjects,
+  }: {
+    profileData?: Partial<PortfolioFormData>;
+    selectedExperiences: PreparedExperience[];
+    selectedSkills: PreparedSkill[];
+    selectedProjects: PreparedProject[];
+  }): Promise<ImportSummaryResult> => {
+    if (!token) {
+      throw new Error("Authentication session expired. Please log in again.");
+    }
+
+    const summary: ImportSummaryResult = {
+      profileUpdatedFields: [],
+      experiencesImported: 0,
+      experiencesSkipped: 0,
+      experiencesFailed: 0,
+      skillsImported: 0,
+      skillsSkipped: 0,
+      skillsFailed: 0,
+      projectsImported: 0,
+      projectsSkipped: 0,
+      projectsFailed: 0,
+      educationDetectedCount: parsedData?.education?.length || 0,
+      errors: [],
+    };
+
+    // 1. Profile pre-fill update
+    if (profileData && Object.keys(profileData).length > 0) {
+      try {
+        const updateRes = await updatePortfolio(portfolioId, profileData, token);
+        if (onProfileUpdated) {
+          onProfileUpdated(updateRes.portfolio);
+        }
+        summary.profileUpdatedFields = Object.keys(profileData);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to update portfolio profile fields.";
+        summary.errors.push(`Profile: ${msg}`);
+      }
+    }
+
+    // 2. Experience items
+    for (const exp of selectedExperiences) {
+      if (exp.isDuplicate) {
+        summary.experiencesSkipped++;
+        continue;
+      }
+
+      if (!exp.startDate) {
+        summary.experiencesFailed++;
+        summary.errors.push(`Experience "${exp.position} at ${exp.company}": Missing valid start date (YYYY-MM-DD required).`);
+        continue;
+      }
+
+      try {
+        await createExperience(
+          portfolioId,
+          {
+            company: exp.company,
+            position: exp.position,
+            description: exp.description || null,
+            startDate: exp.startDate,
+            endDate: exp.isCurrent ? null : exp.endDate || null,
+            isCurrent: exp.isCurrent,
+          },
+          token
+        );
+        summary.experiencesImported++;
+      } catch (err: unknown) {
+        summary.experiencesFailed++;
+        const msg = err instanceof Error ? err.message : "API error";
+        summary.errors.push(`Experience "${exp.position} at ${exp.company}": ${msg}`);
+      }
+    }
+
+    // 3. Skills items
+    for (const skill of selectedSkills) {
+      if (skill.isDuplicate) {
+        summary.skillsSkipped++;
+        continue;
+      }
+
+      try {
+        await createSkill(
+          portfolioId,
+          {
+            name: skill.name,
+            category: skill.category,
+          },
+          token
+        );
+        summary.skillsImported++;
+      } catch (err: unknown) {
+        summary.skillsFailed++;
+        const msg = err instanceof Error ? err.message : "API error";
+        summary.errors.push(`Skill "${skill.name}": ${msg}`);
+      }
+    }
+
+    // 4. Projects items
+    for (const proj of selectedProjects) {
+      if (proj.isDuplicate) {
+        summary.projectsSkipped++;
+        continue;
+      }
+
+      try {
+        await createProject(
+          portfolioId,
+          {
+            title: proj.title,
+            description: proj.description || null,
+            technologies: proj.technologies,
+          },
+          token
+        );
+        summary.projectsImported++;
+      } catch (err: unknown) {
+        summary.projectsFailed++;
+        const msg = err instanceof Error ? err.message : "API error";
+        summary.errors.push(`Project "${proj.title}": ${msg}`);
+      }
+    }
+
+    return summary;
+  };
+
   const handleReset = () => {
     setSelectedFile(null);
     setValidationError(null);
@@ -150,7 +346,8 @@ export default function CvUploadManager({ portfolioId }: CvUploadManagerProps) {
             </h2>
             <p className="text-xs sm:text-sm text-[#64748b] mt-1 max-w-2xl leading-relaxed">
               Upload your resume or curriculum vitae in PDF format. FolioCraft will parse your
-              personal info, career experience, education history, technical skills, and projects.
+              personal info, career experience, education history, technical skills, and projects,
+              allowing you to review and import them into your portfolio.
             </p>
           </div>
           {uiState === "SUCCESS" && (
@@ -219,7 +416,7 @@ export default function CvUploadManager({ portfolioId }: CvUploadManagerProps) {
                       ) : (
                         <>
                           <SparklesIcon className="w-4 h-4" />
-                          <span>Upload & Parse CV</span>
+                          <span>Upload &amp; Parse CV</span>
                         </>
                       )}
                     </button>
@@ -248,6 +445,14 @@ export default function CvUploadManager({ portfolioId }: CvUploadManagerProps) {
         </div>
       )}
 
+      {/* Preparation Error Alert */}
+      {importPreparationError && (
+        <div className="rounded-2xl bg-rose-50 border border-rose-200 p-4 flex items-center gap-2.5 text-xs font-semibold text-rose-800">
+          <AlertCircleIcon className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{importPreparationError}</span>
+        </div>
+      )}
+
       {/* Success Banner */}
       {uiState === "SUCCESS" && uploadMetadata && (
         <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 sm:p-5 flex items-start gap-3">
@@ -270,12 +475,34 @@ export default function CvUploadManager({ portfolioId }: CvUploadManagerProps) {
         </div>
       )}
 
-      {/* Parsed CV Structured Data Preview */}
+      {/* Parsed CV Structured Data Preview with Import to Portfolio Button */}
       {uiState === "SUCCESS" && parsedData && (
         <CvParsedPreview
           data={parsedData}
           uploadId={uploadMetadata?.uploadId}
           fileName={uploadMetadata?.fileName}
+          onOpenImport={handleOpenImportModal}
+          isPreparingImport={isPreparingImport}
+        />
+      )}
+
+      {/* CV Import Review Modal */}
+      {parsedData && isImportModalOpen && (
+        <CvImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          cvData={parsedData}
+          portfolio={portfolio}
+          existingExperiences={existingExperiences}
+          existingSkills={existingSkills}
+          existingProjects={existingProjects}
+          catalogSkills={catalogSkills}
+          onConfirmImport={handleConfirmImport}
+          onReviewPortfolio={(tab = "profile") => {
+            if (onNavigateTab) {
+              onNavigateTab(tab as "profile" | "projects" | "skills" | "experience");
+            }
+          }}
         />
       )}
     </div>
