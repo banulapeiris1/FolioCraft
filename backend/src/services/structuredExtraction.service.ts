@@ -796,21 +796,39 @@ export function extractAchievements(
 
     if (lines.length === 0) continue;
 
-    // If every line is a bullet item, treat each as an achievement
+    // If every line is a bullet item or list item with dates/keywords, treat each as an achievement
     const bulletLines = lines.filter((l) => /^[-*•]/.test(l));
-    if (bulletLines.length > 0 && bulletLines.length === lines.length) {
-      for (const bLine of bulletLines) {
-        const cleaned = bLine.replace(/^[-*•]\s*/, "").trim();
+    const datedLines = lines.filter((l) => /\b(?:19|20)\d{2}\b/.test(l));
+    const isKeywordList =
+      lines.length > 1 &&
+      lines.every((l) =>
+        /^(?:winner|award|honor|dean|best|first|1st|2nd|3rd|semifinalist|finalist|scholarship|champion|gold|silver|bronze)/i.test(
+          l.replace(/^[-*•]\s*/, "")
+        )
+      );
+
+    if (
+      (bulletLines.length > 0 && bulletLines.length === lines.length) ||
+      datedLines.length > 1 ||
+      isKeywordList
+    ) {
+      for (const line of lines) {
+        const cleaned = line.replace(/^[-*•]\s*/, "").trim();
         const dateMatch = cleaned.match(
-          /\(((?:19|20)\d{2}(?:\s*[-–—]\s*(?:19|20)\d{2})?)\)/
+          /\(?\b((?:19|20)\d{2}(?:\s*[-–—]\s*(?:19|20)\d{2})?)\b\)?/
         );
         const date = dateMatch ? dateMatch[1] : undefined;
-        const title = dateMatch
-          ? cleaned.replace(dateMatch[0], "").trim()
-          : cleaned;
+        let title = cleaned;
+        if (dateMatch) {
+          title = cleaned
+            .replace(dateMatch[0], "")
+            .replace(/[-–—]\s*$/, "")
+            .replace(/^\s*[-–—]/, "")
+            .trim();
+        }
 
         achievements.push({
-          title,
+          title: title || cleaned,
           date,
           confidence: "high",
         });
@@ -1020,6 +1038,31 @@ export function extractStructuredCv(
         value: s.name,
       });
     }
+  }
+
+  // Surface review issues when core sections are completely missing
+  if (
+    experience.length === 0 &&
+    sections.details?.experience?.status === "needs_review"
+  ) {
+    reviewIssues.push({
+      field: "experience",
+      section: "experience",
+      message: "No work experience section was detected in the CV. Please review if this is intentional.",
+      severity: "warning",
+    });
+  }
+
+  if (
+    flatSkills.length === 0 &&
+    (!sections.details?.skills || sections.details.skills.status === "not_detected")
+  ) {
+    reviewIssues.push({
+      field: "skills",
+      section: "skills",
+      message: "No skills section was detected in the CV.",
+      severity: "info",
+    });
   }
 
   return {
