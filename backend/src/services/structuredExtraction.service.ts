@@ -1,35 +1,54 @@
 import type {
+  CategorizedSkills,
+  Confidence,
   CvSectionType,
   DetectedCvSections,
+  ReviewIssue,
   SectionDetail,
   SectionStatus,
+  StructuredCvAchievement,
   StructuredCvData,
   StructuredCvEducation,
   StructuredCvExperience,
+  StructuredCvLeadership,
   StructuredCvPersonal,
   StructuredCvProject,
   StructuredCvSkill,
 } from "../types/cv.types";
+import { classifySkills } from "./skillClassification.service";
 
 export type {
+  StructuredCvAchievement,
   StructuredCvData,
   StructuredCvEducation,
   StructuredCvExperience,
+  StructuredCvLeadership,
   StructuredCvPersonal,
   StructuredCvProject,
   StructuredCvSkill,
 };
 
 /**
- * Regex constants for deterministic date parsing.
+ * Regex constants for deterministic date parsing across experience, education, and leadership.
+ * Supports:
+ * - 2024 - 2025
+ * - 2024 – 2025 (en-dash)
+ * - Jan 2024 - Dec 2025
+ * - January 2024 – Present
+ * - 06/2024 - 08/2025
+ * - 2024/06 - 2025/08
+ * - Ongoing / Current / Present / Now
  */
 const MONTH_NAMES =
   "(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)";
 const YEAR = "(?:19|20)\\d{2}";
-const DATE_POINT = `(?:${MONTH_NAMES}\\s+)?${YEAR}`;
-const END_DATE_POINT = `(?:${DATE_POINT}|Present|Current|Now)`;
-const DATE_RANGE_REGEX = new RegExp(
-  `\\b(?<startDate>${DATE_POINT})\\s*(?:-|–|—|to)\\s*(?<endDate>${END_DATE_POINT})\\b`,
+const NUMERIC_DATE = `(?:(?:0?[1-9]|1[0-2])[-/](?:19|20)\\d{2}|(?:19|20)\\d{2}[-/](?:0?[1-9]|1[0-2]))`;
+const WORD_DATE = `(?:${MONTH_NAMES}[.,]?\\s+)?${YEAR}`;
+const DATE_POINT = `(?:${NUMERIC_DATE}|${WORD_DATE})`;
+const END_DATE_POINT = `(?:${DATE_POINT}|Present|Current|Ongoing|Now)`;
+
+export const DATE_RANGE_REGEX = new RegExp(
+  `(?<startDate>${DATE_POINT})\\s*(?:-|–|—|to)\\s*(?<endDate>${END_DATE_POINT})`,
   "i"
 );
 
@@ -40,6 +59,32 @@ const DEGREE_INDICATORS =
   /\b(?:bachelor|master|doctor|phd|b\.?sc|m\.?sc|b\.?a|m\.?a|b\.?eng|m\.?eng|diploma|associate|degree|certificate)\b/i;
 const INSTITUTION_INDICATORS =
   /\b(?:university|college|institute|school|academy|polytechnic|faculty)\b/i;
+
+/**
+ * Common job position indicators.
+ */
+const POSITION_KEYWORDS =
+  /\b(?:engineer|developer|intern|internship|specialist|lead|architect|manager|consultant|analyst|administrator|designer|officer|associate|director|founder|co-founder|vp|head|instructor|assistant|trainee|coordinator|programmer|scientist|specialist)\b/i;
+
+/**
+ * Common company indicators.
+ */
+const COMPANY_KEYWORDS =
+  /\b(?:technologies|technology|solutions|corp|corporation|inc|llc|ltd|limited|labs|studio|systems|company|co\.|group|enterprises|services|agency|software|consulting)\b/i;
+
+/**
+ * Project technology line indicator.
+ */
+const TECH_LINE_REGEX =
+  /^(?:technologies|tech\s+stack|tools|built\s+with|stack)\s*:\s*(.+)$/i;
+
+/**
+ * GitHub and Live URL detection regexes for projects.
+ */
+const GITHUB_URL_REGEX =
+  /https?:\/\/(?:www\.)?github\.com\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)?/i;
+const LIVE_URL_REGEX =
+  /https?:\/\/(?!github\.com)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?/i;
 
 /**
  * Extracts candidate personal and contact info from header text and summary.
@@ -174,7 +219,64 @@ export function extractPersonalInfo(
 }
 
 /**
+ * Helper to determine position and company from candidate header lines,
+ * supporting inheritance of company for multiple roles under one employer.
+ */
+function parseRoleAndCompany(
+  lines: string[],
+  fallbackCompany: string = ""
+): { company: string; position: string } {
+  if (lines.length === 0) {
+    return { company: fallbackCompany, position: "" };
+  }
+
+  if (lines.length === 1) {
+    const single = lines[0]!.trim();
+    for (const sep of [" | ", " at ", " @ ", " - "]) {
+      if (single.includes(sep)) {
+        const parts = single.split(sep).map((p) => p.trim());
+        const part0 = parts[0] || "";
+        const part1 = parts[1] || "";
+        if (POSITION_KEYWORDS.test(part1) && !POSITION_KEYWORDS.test(part0)) {
+          return { company: part0, position: part1 };
+        }
+        return { position: part0, company: part1 };
+      }
+    }
+
+    if (POSITION_KEYWORDS.test(single)) {
+      return { position: single, company: fallbackCompany };
+    }
+    return { position: single, company: fallbackCompany };
+  }
+
+  const line0 = lines[0]!.trim();
+  const line1 = lines[1]!.trim();
+
+  // If line 0 is position and line 1 is company
+  if (POSITION_KEYWORDS.test(line0) && !POSITION_KEYWORDS.test(line1)) {
+    return { position: line0, company: line1 };
+  }
+  // If line 1 is position and line 0 is company
+  if (POSITION_KEYWORDS.test(line1) && !POSITION_KEYWORDS.test(line0)) {
+    return { position: line1, company: line0 };
+  }
+
+  // Check company keywords
+  if (COMPANY_KEYWORDS.test(line0) && !COMPANY_KEYWORDS.test(line1)) {
+    return { company: line0, position: line1 };
+  }
+  if (COMPANY_KEYWORDS.test(line1) && !COMPANY_KEYWORDS.test(line0)) {
+    return { company: line1, position: line0 };
+  }
+
+  return { company: line0, position: line1 };
+}
+
+/**
  * Extracts structured work experience records from the experience section.
+ * Operates across line boundaries, isolates multiple jobs without blank lines,
+ * supports multiple roles under one company, and recognizes ongoing roles.
  */
 export function extractExperience(
   experienceText?: string
@@ -183,35 +285,62 @@ export function extractExperience(
     return [];
   }
 
-  const rawBlocks = experienceText
-    .split(/\n\s*\n/)
-    .map((b) => b.trim())
+  const rawLines = experienceText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
     .filter(Boolean);
 
-  const entries: StructuredCvExperience[] = [];
+  if (rawLines.length === 0) return [];
 
-  for (const block of rawBlocks) {
-    const lines = block
-      .split(/\r?\n/)
-      .map((l) => l.trim())
+  // Find all date range line indices (ignoring lines starting with bullets)
+  const dateIndices: number[] = [];
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i]!;
+    if (/^[-*•]/.test(line)) continue;
+    if (DATE_RANGE_REGEX.test(line)) {
+      dateIndices.push(i);
+    }
+  }
+
+  // Fallback to block splitting if no dates detected
+  if (dateIndices.length === 0) {
+    const blocks = experienceText
+      .split(/\n\s*\n/)
+      .map((b) => b.trim())
       .filter(Boolean);
 
-    if (lines.length === 0) continue;
+    const results: StructuredCvExperience[] = [];
+    for (const block of blocks) {
+      const bLines = block
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
 
-    let dateMatch: RegExpMatchArray | null = null;
-    let dateLineIndex = -1;
+      if (bLines.length === 0) continue;
+      const { company, position } = parseRoleAndCompany(bLines.slice(0, 2));
+      const desc = bLines
+        .slice(2)
+        .map((l) => l.replace(/^[-*•]\s*/, ""))
+        .join("\n");
 
-    for (let i = 0; i < lines.length; i++) {
-      // Ignore bullet points to avoid treating arbitrary years in descriptions as dates
-      if (/^[-*•]/.test(lines[i]!)) continue;
-
-      const m = lines[i]!.match(DATE_RANGE_REGEX);
-      if (m) {
-        dateMatch = m;
-        dateLineIndex = i;
-        break;
-      }
+      results.push({
+        company,
+        position,
+        description: desc || undefined,
+        isCurrent: false,
+        confidence: company && position ? "medium" : "low",
+      });
     }
+    return results;
+  }
+
+  const entries: StructuredCvExperience[] = [];
+  let lastCompany = "";
+
+  for (let k = 0; k < dateIndices.length; k++) {
+    const dateIdx = dateIndices[k]!;
+    const dateLine = rawLines[dateIdx]!;
+    const dateMatch = dateLine.match(DATE_RANGE_REGEX);
 
     let startDate: string | undefined;
     let endDate: string | undefined;
@@ -221,7 +350,7 @@ export function extractExperience(
       startDate = dateMatch.groups["startDate"]?.trim();
       const rawEnd = dateMatch.groups["endDate"]?.trim();
       if (rawEnd) {
-        if (/^(?:present|current|now)$/i.test(rawEnd)) {
+        if (/^(?:present|current|ongoing|now)$/i.test(rawEnd)) {
           isCurrent = true;
           endDate = undefined;
         } else {
@@ -230,64 +359,82 @@ export function extractExperience(
       }
     }
 
-    let company = "";
-    let position = "";
+    const prevDateIdx = k > 0 ? dateIndices[k - 1]! : -1;
+
+    // Check if the date line itself contains role/company text
+    const inlineWithoutDate = dateLine
+      .replace(DATE_RANGE_REGEX, "")
+      .replace(/[()]/g, "")
+      .trim();
+
+    const headerCandidates: string[] = [];
+
+    // Scan backwards from dateIdx - 1 down to prevDateIdx + 1
+    let backIdx = dateIdx - 1;
+    const collectedBackwards: string[] = [];
+
+    while (backIdx > prevDateIdx) {
+      const line = rawLines[backIdx]!;
+      // Stop if bullet point
+      if (/^[-*•]/.test(line)) break;
+      // Stop if lengthy narrative sentence
+      if (line.length > 70 && /[.?!]$/.test(line)) break;
+      collectedBackwards.unshift(line);
+      if (collectedBackwards.length >= 2) break;
+      backIdx--;
+    }
+
+    if (inlineWithoutDate) {
+      headerCandidates.push(inlineWithoutDate);
+    }
+    headerCandidates.push(...collectedBackwards);
+
+    const { company, position } = parseRoleAndCompany(
+      headerCandidates,
+      lastCompany
+    );
+    if (company) {
+      lastCompany = company;
+    }
+
+    // Description lines for this entry start at dateIdx + 1,
+    // and go up to the start of the next entry's header lines
+    const nextDateIdx =
+      k + 1 < dateIndices.length ? dateIndices[k + 1]! : rawLines.length;
+
+    let nextHeaderCount = 0;
+    let nextBack = nextDateIdx - 1;
+    while (nextBack > dateIdx) {
+      const line = rawLines[nextBack]!;
+      if (/^[-*•]/.test(line)) break;
+      if (line.length > 70 && /[.?!]$/.test(line)) break;
+      nextHeaderCount++;
+      if (nextHeaderCount >= 2) break;
+      nextBack--;
+    }
+
+    const descEnd = nextDateIdx - nextHeaderCount;
     const descLines: string[] = [];
-    const headerLines: string[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]!;
-      if (/^[-*•]/.test(line)) {
-        descLines.push(line.replace(/^[-*•]\s*/, ""));
-      } else if (i <= Math.max(dateLineIndex, 1) && descLines.length === 0) {
-        const withoutDate = line
-          .replace(DATE_RANGE_REGEX, "")
-          .replace(/[()]/g, "")
-          .trim();
-        if (withoutDate) {
-          headerLines.push(withoutDate);
-        }
-      } else {
-        descLines.push(line);
-      }
+    for (let d = dateIdx + 1; d < descEnd; d++) {
+      const dLine = rawLines[d]!;
+      descLines.push(dLine.replace(/^[-*•]\s*/, ""));
     }
 
-    if (headerLines.length === 1) {
-      const single = headerLines[0]!;
-      if (single.includes(" | ")) {
-        const parts = single.split(" | ").map((p) => p.trim());
-        position = parts[0] || "";
-        company = parts[1] || "";
-      } else if (single.includes(" at ")) {
-        const parts = single.split(" at ").map((p) => p.trim());
-        position = parts[0] || "";
-        company = parts[1] || "";
-      } else if (single.includes(" - ")) {
-        const parts = single.split(" - ").map((p) => p.trim());
-        position = parts[0] || "";
-        company = parts[1] || "";
-      } else {
-        position = single;
-      }
-    } else if (headerLines.length >= 2) {
-      if (headerLines[0]!.includes(" | ") || headerLines[0]!.includes(" - ")) {
-        const sep = headerLines[0]!.includes(" | ") ? " | " : " - ";
-        const parts = headerLines[0]!.split(sep).map((p) => p.trim());
-        position = parts[0] || "";
-        company = parts[1] || "";
-      } else {
-        position = headerLines[0]!;
-        company = headerLines[1]!;
-      }
-    }
+    const confidence: Confidence =
+      company && position && startDate
+        ? "high"
+        : company && position
+        ? "medium"
+        : "low";
 
     entries.push({
       company,
       position,
-      description: descLines.length > 0 ? descLines.join("\n") : undefined,
       startDate,
       endDate,
       isCurrent,
+      description: descLines.length > 0 ? descLines.join("\n") : undefined,
+      confidence,
     });
   }
 
@@ -372,7 +519,6 @@ export function extractEducation(
     let field: string | undefined;
 
     if (rawDegreeLine) {
-      // Try to split on " in "
       const inMatch = rawDegreeLine.match(/^(.+?)\s+in\s+(.+)$/i);
       if (inMatch) {
         degree = inMatch[1]?.trim();
@@ -382,6 +528,9 @@ export function extractEducation(
       }
     }
 
+    const confidence: Confidence =
+      institution && degree ? "high" : institution ? "medium" : "low";
+
     entries.push({
       institution,
       degree,
@@ -389,6 +538,7 @@ export function extractEducation(
       description: descLines.length > 0 ? descLines.join("\n") : undefined,
       startDate,
       endDate,
+      confidence,
     });
   }
 
@@ -415,19 +565,14 @@ export function extractSkills(skillsText?: string): StructuredCvSkill[] {
     /^(?:languages?|frameworks?|libraries|databases?|frontend|backend|cloud|devops|tools|platforms|technologies|skills|web technologies|technical skills|other|core)\s*:\s*/i;
 
   for (const line of lines) {
-    // If line is ONLY a category label like "Frontend:" or "Technical Skills:", skip it
     if (/^[A-Za-z\s&/]+\s*:$/.test(line)) {
       continue;
     }
 
-    // Strip category prefix if embedded in the line, e.g. "Frontend: React, Next.js"
     const cleanedLine = line.replace(CATEGORY_PREFIX_REGEX, "").trim();
     if (!cleanedLine) continue;
 
-    // First strip leading bullet characters
     const withoutBullets = cleanedLine.replace(/^[-*•]\s*/, "");
-
-    // Split on commas or pipes
     const rawTokens = withoutBullets.split(/[,|]/);
 
     for (let token of rawTokens) {
@@ -437,7 +582,6 @@ export function extractSkills(skillsText?: string): StructuredCvSkill[] {
         .trim();
 
       if (!token) continue;
-      // Skip strings that are too long or purely punctuation
       if (token.length > 50 || /^[^a-zA-Z0-9+#.]+$/.test(token)) continue;
 
       const lower = token.toLowerCase();
@@ -452,21 +596,197 @@ export function extractSkills(skillsText?: string): StructuredCvSkill[] {
 }
 
 /**
+ * Helper to determine if a line possesses project title characteristics.
+ */
+function isLikelyProjectTitle(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.length < 2 || trimmed.length > 70) return false;
+  if (/^[-*•]/.test(trimmed)) return false;
+  if (/[.?!;]$/.test(trimmed)) return false;
+  if (TECH_LINE_REGEX.test(trimmed)) return false;
+  if (/^(?:github|demo|live|url|link|repo)\s*:/i.test(trimmed)) return false;
+  if (/^https?:\/\//i.test(trimmed)) return false;
+  if (
+    /^(?:developed|built|created|implemented|responsible|this|an?|the)\b/i.test(
+      trimmed
+    )
+  )
+    return false;
+  return true;
+}
+
+/**
  * Extracts structured project entries from the projects section.
+ * Segments projects reliably across lines without requiring blank lines,
+ * and extracts associated technologies and GitHub/live URLs.
  */
 export function extractProjects(projectsText?: string): StructuredCvProject[] {
   if (!projectsText || !projectsText.trim()) {
     return [];
   }
 
-  const rawBlocks = projectsText
+  const rawLines = projectsText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  if (rawLines.length === 0) return [];
+
+  interface RawProjectAccumulator {
+    rawTitle: string;
+    descLines: string[];
+    technologies: string[];
+    githubUrl?: string;
+    liveUrl?: string;
+  }
+
+  const accumulators: RawProjectAccumulator[] = [];
+  let current: RawProjectAccumulator | null = null;
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i]!;
+    const isTitle = isLikelyProjectTitle(line);
+
+    if (
+      isTitle &&
+      (!current ||
+        current.descLines.length > 0 ||
+        current.technologies.length > 0 ||
+        current.githubUrl ||
+        current.liveUrl)
+    ) {
+      if (current) {
+        accumulators.push(current);
+      }
+      current = {
+        rawTitle: line,
+        descLines: [],
+        technologies: [],
+      };
+      continue;
+    }
+
+    if (!current) {
+      current = {
+        rawTitle: line,
+        descLines: [],
+        technologies: [],
+      };
+      continue;
+    }
+
+    // Technology line
+    const techMatch = line.match(TECH_LINE_REGEX);
+    if (techMatch && techMatch[1]) {
+      const tokens = techMatch[1]
+        .split(/[,|]/)
+        .map((t) => t.trim())
+        .filter(Boolean);
+      current.technologies = [...new Set([...current.technologies, ...tokens])];
+      continue;
+    }
+
+    // GitHub URL
+    const ghExplicit = line.match(/^github\s*:\s*(https?:\/\/[^\s]+)/i);
+    if (ghExplicit && ghExplicit[1]) {
+      current.githubUrl = ghExplicit[1].trim();
+      continue;
+    }
+    const ghGeneral = line.match(GITHUB_URL_REGEX);
+    if (ghGeneral && !current.githubUrl) {
+      current.githubUrl = ghGeneral[0].trim();
+      const stripped = line
+        .replace(GITHUB_URL_REGEX, "")
+        .replace(/^github\s*:\s*/i, "")
+        .trim();
+      if (stripped) {
+        current.descLines.push(stripped);
+      }
+      continue;
+    }
+
+    // Live / Demo URL
+    const liveExplicit = line.match(
+      /^(?:demo|live|url|website)\s*:\s*(https?:\/\/[^\s]+)/i
+    );
+    if (liveExplicit && liveExplicit[1]) {
+      current.liveUrl = liveExplicit[1].trim();
+      continue;
+    }
+    const liveGeneral = line.match(LIVE_URL_REGEX);
+    if (liveGeneral && !current.liveUrl && !GITHUB_URL_REGEX.test(line)) {
+      current.liveUrl = liveGeneral[0].trim();
+      const stripped = line
+        .replace(LIVE_URL_REGEX, "")
+        .replace(/^(?:demo|live|url|website)\s*:\s*/i, "")
+        .trim();
+      if (stripped) {
+        current.descLines.push(stripped);
+      }
+      continue;
+    }
+
+    // Description lines
+    const cleanDesc = line.replace(/^[-*•]\s*/, "").trim();
+    if (cleanDesc) {
+      current.descLines.push(cleanDesc);
+    }
+  }
+
+  if (current) {
+    accumulators.push(current);
+  }
+
+  const projects: StructuredCvProject[] = [];
+
+  for (const acc of accumulators) {
+    let title = acc.rawTitle.replace(/^[-*•\d.)\]\s]+/, "").trim();
+    let inlineTech: string[] = [];
+
+    // Check for inline tech in title parentheses e.g. "FolioCraft (React, TypeScript)"
+    const parenMatch = title.match(/^(.+?)\s*\(([^)]+)\)$/);
+    if (parenMatch && /,/.test(parenMatch[2]!)) {
+      title = parenMatch[1]!.trim();
+      inlineTech = parenMatch[2]!
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+    }
+
+    const allTech = [...new Set([...inlineTech, ...acc.technologies])];
+    const desc =
+      acc.descLines.length > 0 ? acc.descLines.join("\n") : undefined;
+
+    const confidence: Confidence =
+      title && (desc || allTech.length > 0) ? "high" : title ? "medium" : "low";
+
+    projects.push({
+      title,
+      description: desc,
+      technologies: allTech,
+      githubUrl: acc.githubUrl,
+      liveUrl: acc.liveUrl,
+      confidence,
+    });
+  }
+
+  return projects;
+}
+
+/**
+ * Extracts structured achievement records from the achievements section.
+ */
+export function extractAchievements(
+  achievementsText?: string
+): StructuredCvAchievement[] {
+  if (!achievementsText || !achievementsText.trim()) return [];
+
+  const rawBlocks = achievementsText
     .split(/\n\s*\n/)
     .map((b) => b.trim())
     .filter(Boolean);
 
-  const projects: StructuredCvProject[] = [];
-  const TECH_LINE_REGEX =
-    /^(?:technologies|tech\s+stack|tools|built\s+with|stack)\s*:\s*(.+)$/i;
+  const achievements: StructuredCvAchievement[] = [];
 
   for (const block of rawBlocks) {
     const lines = block
@@ -476,53 +796,163 @@ export function extractProjects(projectsText?: string): StructuredCvProject[] {
 
     if (lines.length === 0) continue;
 
-    const rawTitle = lines[0]!.replace(/^[-*•\d.)\]\s]+/, "").trim();
-    let title = rawTitle;
-    let inlineTech: string[] = [];
+    // If every line is a bullet item, treat each as an achievement
+    const bulletLines = lines.filter((l) => /^[-*•]/.test(l));
+    if (bulletLines.length > 0 && bulletLines.length === lines.length) {
+      for (const bLine of bulletLines) {
+        const cleaned = bLine.replace(/^[-*•]\s*/, "").trim();
+        const dateMatch = cleaned.match(
+          /\(((?:19|20)\d{2}(?:\s*[-–—]\s*(?:19|20)\d{2})?)\)/
+        );
+        const date = dateMatch ? dateMatch[1] : undefined;
+        const title = dateMatch
+          ? cleaned.replace(dateMatch[0], "").trim()
+          : cleaned;
 
-    // Check for inline tech in title parentheses e.g. "FolioCraft (React, TypeScript)"
-    const parenMatch = rawTitle.match(/^(.+?)\s*\(([^)]+)\)$/);
-    if (parenMatch && /,/.test(parenMatch[2]!)) {
-      title = parenMatch[1]!.trim();
-      inlineTech = parenMatch[2]!
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
+        achievements.push({
+          title,
+          date,
+          confidence: "high",
+        });
+      }
+      continue;
     }
 
-    const descLines: string[] = [];
-    let detectedTech: string[] = inlineTech;
+    const title = lines[0]!.replace(/^[-*•]\s*/, "").trim();
+    let description: string | undefined;
+    let date: string | undefined;
 
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i]!;
-      const techMatch = line.match(TECH_LINE_REGEX);
-      if (techMatch && techMatch[1]) {
-        const tokens = techMatch[1]
-          .split(/[,|]/)
-          .map((t) => t.trim())
-          .filter(Boolean);
-        detectedTech = [...new Set([...detectedTech, ...tokens])];
-      } else {
-        const cleanDescLine = line.replace(/^[-*•]\s*/, "").trim();
-        if (cleanDescLine) {
-          descLines.push(cleanDescLine);
+    if (lines.length >= 2) {
+      const rest = lines.slice(1);
+      const descParts: string[] = [];
+      for (const r of rest) {
+        const dMatch = r.match(
+          /\b((?:19|20)\d{2}(?:\s*[-–—]\s*(?:19|20)\d{2})?)\b/
+        );
+        if (dMatch && !date && (r.length <= 15 || /^\(?\d{4}/.test(r))) {
+          date = dMatch[1];
+        } else {
+          descParts.push(r.replace(/^[-*•]\s*/, "").trim());
         }
+      }
+      if (descParts.length > 0) {
+        description = descParts.join("\n");
       }
     }
 
-    projects.push({
+    achievements.push({
       title,
-      description: descLines.length > 0 ? descLines.join("\n") : undefined,
-      technologies: detectedTech,
+      description,
+      date,
+      confidence: title ? "high" : "low",
     });
   }
 
-  return projects;
+  return achievements;
 }
 
 /**
- * Main CV-06 structured extraction pipeline.
- * Deterministically transforms detected CV sections into structured CV data.
+ * Extracts structured leadership records from the leadership section.
+ */
+export function extractLeadership(
+  leadershipText?: string
+): StructuredCvLeadership[] {
+  if (!leadershipText || !leadershipText.trim()) return [];
+
+  const rawBlocks = leadershipText
+    .split(/\n\s*\n/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  const leadershipEntries: StructuredCvLeadership[] = [];
+
+  for (const block of rawBlocks) {
+    const lines = block
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    if (lines.length === 0) continue;
+
+    let startDate: string | undefined;
+    let endDate: string | undefined;
+    let dateLineIdx = -1;
+
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i]!.match(DATE_RANGE_REGEX);
+      if (m && m.groups) {
+        startDate = m.groups["startDate"]?.trim();
+        const rawEnd = m.groups["endDate"]?.trim();
+        if (rawEnd && /^(?:present|current|ongoing|now)$/i.test(rawEnd)) {
+          endDate = undefined;
+        } else {
+          endDate = rawEnd;
+        }
+        dateLineIdx = i;
+        break;
+      }
+    }
+
+    let role = "";
+    let organization = "";
+    const descLines: string[] = [];
+    const headerLines: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      if (i === dateLineIdx) {
+        const withoutDate = lines[i]!
+          .replace(DATE_RANGE_REGEX, "")
+          .replace(/[()]/g, "")
+          .trim();
+        if (withoutDate) {
+          headerLines.push(withoutDate);
+        }
+        continue;
+      }
+      if (/^[-*•]/.test(lines[i]!)) {
+        descLines.push(lines[i]!.replace(/^[-*•]\s*/, "").trim());
+      } else if (headerLines.length < 2 && descLines.length === 0) {
+        headerLines.push(lines[i]!);
+      } else {
+        descLines.push(lines[i]!);
+      }
+    }
+
+    if (headerLines.length === 1) {
+      const single = headerLines[0]!;
+      for (const sep of [" | ", " at ", " - ", ", "]) {
+        if (single.includes(sep)) {
+          const parts = single.split(sep).map((p) => p.trim());
+          role = parts[0] || "";
+          organization = parts[1] || "";
+          break;
+        }
+      }
+      if (!role) role = single;
+    } else if (headerLines.length >= 2) {
+      role = headerLines[0]!;
+      organization = headerLines[1]!;
+    }
+
+    const confidence: Confidence =
+      role && organization ? "high" : role ? "medium" : "low";
+
+    leadershipEntries.push({
+      role,
+      organization: organization || undefined,
+      startDate,
+      endDate,
+      description: descLines.length > 0 ? descLines.join("\n") : undefined,
+      confidence,
+    });
+  }
+
+  return leadershipEntries;
+}
+
+/**
+ * Main structured CV extraction pipeline.
+ * Transforms detected CV sections into structured, classified CV entities.
  */
 export function extractStructuredCv(
   sections: DetectedCvSections
@@ -537,12 +967,71 @@ export function extractStructuredCv(
     }
   }
 
+  const reviewIssues: ReviewIssue[] = [];
+
+  const personal = extractPersonalInfo(sections.headerText, sections.summary);
+  const experience = extractExperience(sections.experience);
+  const education = extractEducation(sections.education);
+  const rawSkills = extractSkills(sections.skills);
+  const { flatSkills, categorizedSkills } = classifySkills(rawSkills);
+  const projects = extractProjects(sections.projects);
+  const achievements = extractAchievements(sections.achievements);
+  const leadership = extractLeadership(sections.leadership);
+
+  // Generate Review Issues for meaningful ambiguities
+  for (const exp of experience) {
+    if (!exp.startDate) {
+      reviewIssues.push({
+        field: "startDate",
+        section: "experience",
+        message: `Experience entry for "${exp.position || "Role"}" at "${exp.company || "Company"}" is missing a start date.`,
+        severity: "warning",
+      });
+    }
+    if (!exp.company || !exp.position) {
+      reviewIssues.push({
+        field: "company",
+        section: "experience",
+        message:
+          "Experience entry has incomplete role or company information.",
+        severity: "warning",
+      });
+    }
+  }
+
+  for (const p of projects) {
+    if (!p.description && p.technologies.length === 0) {
+      reviewIssues.push({
+        field: "description",
+        section: "projects",
+        message: `Project "${p.title}" is missing description or technologies.`,
+        severity: "info",
+      });
+    }
+  }
+
+  for (const s of flatSkills) {
+    if (s.category === "other" && s.confidence === "medium") {
+      reviewIssues.push({
+        field: "name",
+        section: "skills",
+        message: `Skill "${s.name}" could not be categorized automatically.`,
+        severity: "info",
+        value: s.name,
+      });
+    }
+  }
+
   return {
-    personal: extractPersonalInfo(sections.headerText, sections.summary),
-    experience: extractExperience(sections.experience),
-    education: extractEducation(sections.education),
-    skills: extractSkills(sections.skills),
-    projects: extractProjects(sections.projects),
+    personal,
+    experience,
+    education,
+    skills: flatSkills,
+    projects,
+    categorizedSkills,
+    achievements: achievements.length > 0 ? achievements : undefined,
+    leadership: leadership.length > 0 ? leadership : undefined,
+    reviewIssues: reviewIssues.length > 0 ? reviewIssues : undefined,
     sectionStatuses,
     rawText: sections.rawText,
   };

@@ -116,6 +116,7 @@ export interface StructuredCvExperience {
   startDate?: string;
   endDate?: string;
   isCurrent: boolean;
+  confidence?: Confidence;
 }
 
 /**
@@ -128,6 +129,7 @@ export interface StructuredCvEducation {
   description?: string;
   startDate?: string;
   endDate?: string;
+  confidence?: Confidence;
 }
 
 /**
@@ -135,6 +137,8 @@ export interface StructuredCvEducation {
  */
 export interface StructuredCvSkill {
   name: string;
+  category?: string;
+  confidence?: Confidence;
 }
 
 /**
@@ -159,6 +163,7 @@ export interface StructuredCvProject {
   technologies: string[];
   githubUrl?: string;
   liveUrl?: string;
+  confidence?: Confidence;
 }
 
 /**
@@ -168,6 +173,7 @@ export interface StructuredCvAchievement {
   title: string;
   description?: string;
   date?: string;
+  confidence?: Confidence;
 }
 
 /**
@@ -179,6 +185,7 @@ export interface StructuredCvLeadership {
   description?: string;
   startDate?: string;
   endDate?: string;
+  confidence?: Confidence;
 }
 
 /**
