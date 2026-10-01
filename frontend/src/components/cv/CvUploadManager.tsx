@@ -310,6 +310,8 @@ export default function CvUploadManager({
             title: proj.title,
             description: proj.description || null,
             technologies: proj.technologies,
+            githubUrl: proj.githubUrl || null,
+            projectUrl: proj.liveUrl || null,
           },
           token
         );
@@ -479,6 +481,8 @@ export default function CvUploadManager({
       {uiState === "SUCCESS" && parsedData && (
         <CvParsedPreview
           data={parsedData}
+          file={selectedFile}
+          onDataChange={(updated) => setParsedData(updated)}
           uploadId={uploadMetadata?.uploadId}
           fileName={uploadMetadata?.fileName}
           onOpenImport={handleOpenImportModal}

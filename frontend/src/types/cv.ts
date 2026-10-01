@@ -8,6 +8,32 @@ export type CvUploadStatus =
   | "COMPLETED"
   | "FAILED";
 
+export type Confidence = "high" | "medium" | "low";
+
+export type CvSectionType =
+  | "header"
+  | "summary"
+  | "experience"
+  | "education"
+  | "skills"
+  | "projects"
+  | "certifications"
+  | "achievements"
+  | "leadership"
+  | "languages"
+  | "interests"
+  | "other";
+
+export type SectionStatus = "detected" | "empty" | "ambiguous" | "missing";
+
+export interface ReviewIssue {
+  field: string;
+  section: string;
+  message: string;
+  severity: "info" | "warning" | "error";
+  value?: string;
+}
+
 export interface StructuredCvPersonal {
   fullName?: string;
   email?: string;
@@ -26,6 +52,8 @@ export interface StructuredCvExperience {
   startDate?: string;
   endDate?: string;
   isCurrent: boolean;
+  technologies?: string[];
+  confidence?: Confidence;
 }
 
 export interface StructuredCvEducation {
@@ -35,16 +63,49 @@ export interface StructuredCvEducation {
   description?: string;
   startDate?: string;
   endDate?: string;
+  confidence?: Confidence;
 }
 
 export interface StructuredCvSkill {
   name: string;
+  category?: string;
+  confidence?: Confidence;
 }
 
 export interface StructuredCvProject {
   title: string;
   description?: string;
   technologies: string[];
+  githubUrl?: string;
+  liveUrl?: string;
+  confidence?: Confidence;
+}
+
+export interface StructuredCvAchievement {
+  title: string;
+  description?: string;
+  date?: string;
+  issuer?: string;
+  confidence?: Confidence;
+}
+
+export interface StructuredCvLeadership {
+  role: string;
+  organization?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  confidence?: Confidence;
+}
+
+export interface CategorizedSkills {
+  languages: StructuredCvSkill[];
+  frontend: StructuredCvSkill[];
+  backend: StructuredCvSkill[];
+  databases: StructuredCvSkill[];
+  tools: StructuredCvSkill[];
+  softSkills: StructuredCvSkill[];
+  other: StructuredCvSkill[];
 }
 
 export interface StructuredCvData {
@@ -53,6 +114,14 @@ export interface StructuredCvData {
   education: StructuredCvEducation[];
   skills: StructuredCvSkill[];
   projects: StructuredCvProject[];
+  categorizedSkills?: CategorizedSkills;
+  achievements?: StructuredCvAchievement[];
+  leadership?: StructuredCvLeadership[];
+  reviewIssues?: ReviewIssue[];
+  sectionStatuses?: Partial<Record<CvSectionType, SectionStatus>>;
+  rawText?: string;
+  totalPages?: number;
+  pageTexts?: string[];
 }
 
 export interface CvUploadEntity {

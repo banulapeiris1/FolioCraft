@@ -410,6 +410,8 @@ export interface PreparedProject {
   title: string;
   description: string;
   technologies: string[];
+  githubUrl?: string;
+  liveUrl?: string;
   isDuplicate: boolean;
   selected: boolean;
 }
@@ -446,6 +448,8 @@ export function prepareProjectImports(
       title,
       description,
       technologies,
+      githubUrl: cvProj.githubUrl,
+      liveUrl: cvProj.liveUrl,
       isDuplicate,
       selected: !isDuplicate && Boolean(title),
     };
