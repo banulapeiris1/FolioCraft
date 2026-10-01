@@ -23,6 +23,8 @@ import {
   XIcon,
   CheckCircleIcon,
   AlertCircleIcon,
+  GithubIcon,
+  ExternalLinkIcon,
 } from "@/components/portfolio/PortfolioIcons";
 
 export interface ImportSummaryResult {
@@ -75,7 +77,12 @@ export default function CvImportModal({
     prepareExperienceImports(cvData.experience || [], existingExperiences).items
   );
   const [preparedSkills, setPreparedSkills] = useState<PreparedSkill[]>(() =>
-    prepareSkillImports(cvData.skills || [], existingSkills, catalogSkills).items
+    prepareSkillImports(
+      cvData.skills || [],
+      existingSkills,
+      catalogSkills,
+      cvData.categorizedSkills
+    ).items
   );
   const [preparedProj, setPreparedProj] = useState<PreparedProject[]>(() =>
     prepareProjectImports(cvData.projects || [], existingProjects).items
@@ -85,6 +92,8 @@ export default function CvImportModal({
   const [includeProfile, setIncludeProfile] = useState(() =>
     Boolean(
       cvData.personal?.fullName ||
+      cvData.personal?.professionalTitle ||
+      cvData.personal?.title ||
       cvData.personal?.email ||
       cvData.personal?.phone ||
       cvData.personal?.location ||
@@ -99,7 +108,12 @@ export default function CvImportModal({
     prepareExperienceImports(cvData.experience || [], existingExperiences).items.some((i) => i.selected)
   );
   const [includeSkills, setIncludeSkills] = useState(() =>
-    prepareSkillImports(cvData.skills || [], existingSkills, catalogSkills).items.some((i) => i.selected)
+    prepareSkillImports(
+      cvData.skills || [],
+      existingSkills,
+      catalogSkills,
+      cvData.categorizedSkills
+    ).items.some((i) => i.selected)
   );
   const [includeProjects, setIncludeProjects] = useState(() =>
     prepareProjectImports(cvData.projects || [], existingProjects).items.some((i) => i.selected)
@@ -202,6 +216,15 @@ export default function CvImportModal({
   const selectedProjCount = includeProjects
     ? preparedProj.filter((p) => p.selected).length
     : 0;
+
+  const newExpCount = preparedExp.filter((e) => !e.isDuplicate).length;
+  const skippedExpCount = preparedExp.filter((e) => e.isDuplicate).length;
+
+  const newProjCount = preparedProj.filter((p) => !p.isDuplicate).length;
+  const skippedProjCount = preparedProj.filter((p) => p.isDuplicate).length;
+
+  const newSkillCount = preparedSkills.filter((s) => !s.isDuplicate).length;
+  const skippedSkillCount = preparedSkills.filter((s) => s.isDuplicate).length;
 
   const totalSelectedCount =
     (includeProfile ? profileMergePreview.changedFields.length : 0) +
@@ -384,6 +407,42 @@ export default function CvImportModal({
                 </div>
               )}
 
+              {/* Top Import Preview Summary Bar (Step 7) */}
+              <div className="p-4 rounded-2xl bg-[#faf9fd] border border-[#dcd3f8] space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-[#0f172a]">
+                  <span>Import Preview Summary</span>
+                  <span className="text-[#6e56cf] font-semibold">{totalSelectedCount} items selected</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div className="p-2 rounded-xl bg-white border border-[#eae6f5]">
+                    <span className="text-[10px] text-[#64748b] block font-semibold">Profile</span>
+                    <span className="font-bold text-[#0f172a]">
+                      {profileMergePreview.changedFields.length > 0
+                        ? `✓ ${profileMergePreview.changedFields.length} update(s)`
+                        : "No changes"}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-white border border-[#eae6f5]">
+                    <span className="text-[10px] text-[#64748b] block font-semibold">Experience</span>
+                    <span className="font-bold text-[#0f172a]">
+                      +{newExpCount} new{skippedExpCount > 0 ? `, ↻ ${skippedExpCount} existing` : ""}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-white border border-[#eae6f5]">
+                    <span className="text-[10px] text-[#64748b] block font-semibold">Projects</span>
+                    <span className="font-bold text-[#0f172a]">
+                      +{newProjCount} new{skippedProjCount > 0 ? `, ↻ ${skippedProjCount} existing` : ""}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-white border border-[#eae6f5]">
+                    <span className="text-[10px] text-[#64748b] block font-semibold">Skills</span>
+                    <span className="font-bold text-[#0f172a]">
+                      +{newSkillCount} new{skippedSkillCount > 0 ? `, ✓ ${skippedSkillCount} existing` : ""}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* 1. Profile Section */}
               <div className="rounded-2xl border border-[#eae6f5] p-5 bg-white space-y-3">
                 <div className="flex items-center justify-between">
@@ -407,11 +466,11 @@ export default function CvImportModal({
 
                 {includeProfile && (
                   <div className="mt-3 pt-3 border-t border-[#f0ecf9] space-y-3 text-xs">
-                    <div className="flex items-center justify-between bg-[#faf9fd] p-3 rounded-xl border border-[#f0ecf9]">
-                      <span className="text-[#64748b]">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#faf9fd] p-3 rounded-xl border border-[#f0ecf9]">
+                      <span className="text-[#64748b] text-xs">
                         Non-destructive rule: Existing non-empty fields are preserved by default.
                       </span>
-                      <label className="flex items-center gap-2 cursor-pointer font-semibold text-[#6e56cf] ml-2 shrink-0">
+                      <label className="flex items-center gap-2 cursor-pointer font-semibold text-[#6e56cf] shrink-0">
                         <input
                           type="checkbox"
                           checked={overwriteProfile}
@@ -423,40 +482,42 @@ export default function CvImportModal({
                       </label>
                     </div>
 
-                    {/* Pre-fill fields summary */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                      {cvData.personal?.fullName && (
-                        <div className="p-2 rounded-lg bg-white border border-[#eae6f5]">
-                          <span className="text-[#64748b]">Full Name: </span>
-                          <span className="font-semibold text-[#0f172a]">
-                            {cvData.personal.fullName}
-                          </span>
-                        </div>
-                      )}
-                      {cvData.personal?.email && (
-                        <div className="p-2 rounded-lg bg-white border border-[#eae6f5]">
-                          <span className="text-[#64748b]">Email: </span>
-                          <span className="font-semibold text-[#0f172a]">
-                            {cvData.personal.email}
-                          </span>
-                        </div>
-                      )}
-                      {cvData.personal?.phone && (
-                        <div className="p-2 rounded-lg bg-white border border-[#eae6f5]">
-                          <span className="text-[#64748b]">Phone: </span>
-                          <span className="font-semibold text-[#0f172a]">
-                            {cvData.personal.phone}
-                          </span>
-                        </div>
-                      )}
-                      {cvData.personal?.location && (
-                        <div className="p-2 rounded-lg bg-white border border-[#eae6f5]">
-                          <span className="text-[#64748b]">Location: </span>
-                          <span className="font-semibold text-[#0f172a]">
-                            {cvData.personal.location}
-                          </span>
-                        </div>
-                      )}
+                    {/* Side-by-side field diff comparison (Step 2) */}
+                    <div className="overflow-x-auto rounded-xl border border-[#eae6f5]">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-[#f8f7fd] border-b border-[#eae6f5] text-[10px] font-bold uppercase text-[#64748b]">
+                            <th className="p-2.5">Field</th>
+                            <th className="p-2.5">Current Portfolio Value</th>
+                            <th className="p-2.5">CV Value</th>
+                            <th className="p-2.5 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#f0ecf9] bg-white">
+                          {profileMergePreview.fieldDiffs.filter((d) => d.status !== "empty").map((diff) => (
+                            <tr key={diff.field} className="hover:bg-[#faf9fd]">
+                              <td className="p-2.5 font-bold text-[#0f172a] whitespace-nowrap">{diff.label}</td>
+                              <td className="p-2.5 text-[#64748b] max-w-[160px] truncate">
+                                {diff.currentValue || <span className="text-[#94a3b8] italic">Empty</span>}
+                              </td>
+                              <td className="p-2.5 text-[#0f172a] font-medium max-w-[160px] truncate">
+                                {diff.cvValue}
+                              </td>
+                              <td className="p-2.5 text-right whitespace-nowrap">
+                                {diff.willUpdate ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                    ✓ Will Apply
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                    Preserved
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
@@ -654,6 +715,22 @@ export default function CvImportModal({
                               </span>
                             )}
                           </div>
+                          {(proj.githubUrl || proj.liveUrl) && (
+                            <div className="flex items-center gap-3 text-[11px] mt-1 text-[#64748b]">
+                              {proj.githubUrl && (
+                                <span className="flex items-center gap-1 font-medium text-[#0f172a]">
+                                  <GithubIcon className="w-3 h-3" />
+                                  <span className="truncate max-w-[180px]">{proj.githubUrl}</span>
+                                </span>
+                              )}
+                              {proj.liveUrl && (
+                                <span className="flex items-center gap-1 font-medium text-[#6e56cf]">
+                                  <ExternalLinkIcon className="w-3 h-3" />
+                                  <span className="truncate max-w-[180px]">{proj.liveUrl}</span>
+                                </span>
+                              )}
+                            </div>
+                          )}
                           {proj.description && (
                             <p className="text-[11px] text-[#64748b] truncate mt-1">
                               {proj.description}
@@ -704,6 +781,26 @@ export default function CvImportModal({
                   </span>
                 </div>
               </div>
+
+              {/* 6. Achievements & Leadership (Preview Only) */}
+              {((cvData.achievements && cvData.achievements.length > 0) ||
+                (cvData.leadership && cvData.leadership.length > 0)) && (
+                <div className="rounded-2xl border border-dashed border-[#dcd3f8] p-4 bg-[#faf9fd] opacity-75">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-semibold text-[#64748b]">
+                        Achievements &amp; Leadership
+                      </span>
+                      <p className="text-[11px] text-[#94a3b8] mt-0.5">
+                        {cvData.achievements?.length || 0} achievement(s) and {cvData.leadership?.length || 0} leadership entry/entries detected. Preserved in your reviewed CV data — not imported into portfolio records in this database version.
+                      </p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#f1edf9] text-[#6e56cf] border border-[#e4daf7] shrink-0 ml-2">
+                      Preview Only
+                    </span>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

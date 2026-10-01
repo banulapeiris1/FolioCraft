@@ -36,6 +36,8 @@ export interface ReviewIssue {
 
 export interface StructuredCvPersonal {
   fullName?: string;
+  professionalTitle?: string;
+  title?: string;
   email?: string;
   phone?: string;
   location?: string;

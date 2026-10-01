@@ -6,6 +6,7 @@
  */
 
 import type {
+  CategorizedSkills,
   StructuredCvPersonal,
   StructuredCvExperience,
   StructuredCvSkill,
@@ -178,16 +179,27 @@ export interface ProfileMergeOptions {
   overwriteExisting?: boolean;
 }
 
+export interface ProfileFieldDiff {
+  field: string;
+  label: string;
+  currentValue: string;
+  cvValue: string;
+  willUpdate: boolean;
+  status: "new" | "update" | "preserved" | "empty";
+}
+
 export interface ProfileMergeResult {
   merged: Partial<PortfolioFormData>;
   changedFields: string[];
   preservedFields: string[];
+  fieldDiffs: ProfileFieldDiff[];
 }
 
 /**
  * Merges parsed CV personal information into existing portfolio form data.
  * Non-destructive: preserves existing non-empty fields by default.
- * Never modifies username, title, profileImageUrl, template, or published.
+ * Never modifies username, profileImageUrl, template, or published.
+ * Accurately tracks field-by-field diffs for explicit UI review.
  */
 export function mergeProfileData(
   current: Partial<PortfolioFormData>,
@@ -202,60 +214,143 @@ export function mergeProfileData(
 
   const changedFields: string[] = [];
   const preservedFields: string[] = [];
+  const fieldDiffs: ProfileFieldDiff[] = [];
 
-  const updateField = (
-    fieldKey: "name" | "email" | "phone" | "location" | "about",
+  const evaluateField = (
+    fieldKey: "name" | "title" | "email" | "phone" | "location" | "about",
+    label: string,
     parsedVal?: string
   ) => {
-    if (!parsedVal || !parsedVal.trim()) return;
+    const currentVal = (current[fieldKey] || "").trim();
+    const cvVal = (parsedVal || "").trim();
 
-    const currentVal = current[fieldKey];
-    const isCurrentEmpty = !currentVal || !currentVal.trim();
+    if (!cvVal) {
+      fieldDiffs.push({
+        field: fieldKey,
+        label,
+        currentValue: currentVal,
+        cvValue: "",
+        willUpdate: false,
+        status: "empty",
+      });
+      return;
+    }
 
-    if (isCurrentEmpty || overwrite) {
-      merged[fieldKey] = parsedVal.trim();
+    const isCurrentEmpty = !currentVal;
+    if (isCurrentEmpty) {
+      merged[fieldKey] = cvVal;
       changedFields.push(fieldKey);
+      fieldDiffs.push({
+        field: fieldKey,
+        label,
+        currentValue: currentVal,
+        cvValue: cvVal,
+        willUpdate: true,
+        status: "new",
+      });
+    } else if (overwrite) {
+      merged[fieldKey] = cvVal;
+      changedFields.push(fieldKey);
+      fieldDiffs.push({
+        field: fieldKey,
+        label,
+        currentValue: currentVal,
+        cvValue: cvVal,
+        willUpdate: true,
+        status: "update",
+      });
     } else {
       preservedFields.push(fieldKey);
+      fieldDiffs.push({
+        field: fieldKey,
+        label,
+        currentValue: currentVal,
+        cvValue: cvVal,
+        willUpdate: false,
+        status: "preserved",
+      });
     }
   };
 
-  const updateSocialLink = (
+  const evaluateSocialLink = (
     platform: "website" | "linkedin" | "github",
+    label: string,
     parsedUrl?: string
   ) => {
-    if (!parsedUrl || !parsedUrl.trim()) return;
-
     const currentLinks = current.socialLinks || {};
-    const currentUrl = currentLinks[platform];
-    const isCurrentEmpty = !currentUrl || !currentUrl.trim();
+    const currentUrl = (currentLinks[platform] || "").trim();
+    const cvUrl = (parsedUrl || "").trim();
 
-    if (isCurrentEmpty || overwrite) {
-      merged.socialLinks![platform] = parsedUrl.trim();
+    if (!cvUrl) {
+      fieldDiffs.push({
+        field: `socialLinks.${platform}`,
+        label,
+        currentValue: currentUrl,
+        cvValue: "",
+        willUpdate: false,
+        status: "empty",
+      });
+      return;
+    }
+
+    const isCurrentEmpty = !currentUrl;
+    if (isCurrentEmpty) {
+      merged.socialLinks![platform] = cvUrl;
       changedFields.push(`socialLinks.${platform}`);
+      fieldDiffs.push({
+        field: `socialLinks.${platform}`,
+        label,
+        currentValue: currentUrl,
+        cvValue: cvUrl,
+        willUpdate: true,
+        status: "new",
+      });
+    } else if (overwrite) {
+      merged.socialLinks![platform] = cvUrl;
+      changedFields.push(`socialLinks.${platform}`);
+      fieldDiffs.push({
+        field: `socialLinks.${platform}`,
+        label,
+        currentValue: currentUrl,
+        cvValue: cvUrl,
+        willUpdate: true,
+        status: "update",
+      });
     } else {
       preservedFields.push(`socialLinks.${platform}`);
+      fieldDiffs.push({
+        field: `socialLinks.${platform}`,
+        label,
+        currentValue: currentUrl,
+        cvValue: cvUrl,
+        willUpdate: false,
+        status: "preserved",
+      });
     }
   };
 
   // Map candidate fields
-  updateField("name", parsed.fullName);
-  updateField("email", parsed.email);
-  updateField("phone", parsed.phone);
-  updateField("location", parsed.location);
-  updateField("about", parsed.summary);
+  evaluateField("name", "Full Name", parsed.fullName);
+  evaluateField(
+    "title",
+    "Professional Title",
+    parsed.professionalTitle || parsed.title
+  );
+  evaluateField("email", "Email Address", parsed.email);
+  evaluateField("phone", "Phone Number", parsed.phone);
+  evaluateField("location", "Location", parsed.location);
+  evaluateField("about", "About / Bio", parsed.summary);
 
-  updateSocialLink("website", parsed.website);
-  updateSocialLink("linkedin", parsed.linkedin);
-  updateSocialLink("github", parsed.github);
+  evaluateSocialLink("website", "Website", parsed.website);
+  evaluateSocialLink("linkedin", "LinkedIn", parsed.linkedin);
+  evaluateSocialLink("github", "GitHub", parsed.github);
 
-  // Strictly preserve immutable or identity fields
+  // Strictly preserve immutable or system fields
   merged.username = current.username;
-  merged.title = current.title;
   merged.profileImageUrl = current.profileImageUrl;
   merged.template = current.template;
 
-  return { merged, changedFields, preservedFields };
+  return { merged, changedFields, preservedFields, fieldDiffs };
 }
 
 // ============================================================================
@@ -276,6 +371,7 @@ export interface PreparedExperience {
   needsDateReview: boolean;
   isDuplicate: boolean;
   selected: boolean;
+  technologies?: string[];
 }
 
 export function prepareExperienceImports(
@@ -294,7 +390,22 @@ export function prepareExperienceImports(
   const items: PreparedExperience[] = parsedList.map((cvExp, idx) => {
     const company = cvExp.company?.trim() || "";
     const position = cvExp.position?.trim() || "";
-    const description = cvExp.description?.trim() || "";
+    const rawDescription = cvExp.description?.trim() || "";
+
+    // Preserve extracted technologies in description if present
+    let finalDescription = rawDescription;
+    if (cvExp.technologies && cvExp.technologies.length > 0) {
+      const techJoined = cvExp.technologies.join(", ");
+      const lowerDesc = finalDescription.toLowerCase();
+      if (
+        !lowerDesc.includes("technologies:") &&
+        !lowerDesc.includes("tech stack:")
+      ) {
+        finalDescription = finalDescription
+          ? `${finalDescription}\nTechnologies: ${techJoined}`
+          : `Technologies: ${techJoined}`;
+      }
+    }
 
     const key = `${company.toLowerCase()}:::${position.toLowerCase()}`;
     const isDuplicate = existingSet.has(key) || seenInBatch.has(key);
@@ -318,16 +429,19 @@ export function prepareExperienceImports(
       id: `cv-exp-${idx}-${Date.now()}`,
       company,
       position,
-      description,
+      description: finalDescription,
       startDate: startNorm.date,
       endDate: finalEndDate,
       isCurrent,
       rawStartDate: cvExp.startDate || "",
       rawEndDate: cvExp.endDate || "",
       isDateValid: isDateValid && hasStartDate,
-      needsDateReview: !startNorm.date || (!isCurrent && !endNorm.date && Boolean(cvExp.endDate)),
+      needsDateReview:
+        !startNorm.date ||
+        (!isCurrent && !endNorm.date && Boolean(cvExp.endDate)),
       isDuplicate,
       selected: !isDuplicate && Boolean(company && position && startNorm.date),
+      technologies: cvExp.technologies,
     };
   });
 
@@ -349,12 +463,13 @@ export interface PreparedSkill {
 
 /**
  * Resolves skill category against predefined catalog and deduplicates
- * against existing portfolio skills.
+ * deterministically against existing portfolio skills and categorizedSkills.
  */
 export function prepareSkillImports(
   parsedList: StructuredCvSkill[],
   existingList: Skill[] = [],
-  catalogList: CatalogSkill[] = []
+  catalogList: CatalogSkill[] = [],
+  categorizedSkills?: Partial<CategorizedSkills>
 ): { items: PreparedSkill[]; duplicateCount: number } {
   // Existing skills lowercase lookup
   const existingSet = new Set(
@@ -367,26 +482,59 @@ export function prepareSkillImports(
     catalogMap.set(catSkill.name.toLowerCase().trim(), catSkill.category.trim());
   }
 
+  // Combine flat skills and categorizedSkills deterministically
+  const combinedCandidates: StructuredCvSkill[] = [...parsedList];
+  if (categorizedSkills) {
+    const categories: (keyof CategorizedSkills)[] = [
+      "languages",
+      "frontend",
+      "backend",
+      "databases",
+      "tools",
+      "softSkills",
+      "other",
+    ];
+    for (const catKey of categories) {
+      const skillsInCat = categorizedSkills[catKey];
+      if (Array.isArray(skillsInCat)) {
+        for (const s of skillsInCat) {
+          if (s?.name) {
+            combinedCandidates.push({
+              name: s.name,
+              category: s.category || catKey,
+            });
+          }
+        }
+      }
+    }
+  }
+
   const seenInBatch = new Set<string>();
   let duplicateCount = 0;
-
   const items: PreparedSkill[] = [];
 
-  for (let idx = 0; idx < parsedList.length; idx++) {
-    const rawName = parsedList[idx]?.name?.trim() || "";
+  for (let idx = 0; idx < combinedCandidates.length; idx++) {
+    const rawName = combinedCandidates[idx]?.name?.trim() || "";
     if (!rawName) continue;
 
     const lower = rawName.toLowerCase();
-    const isDuplicate = existingSet.has(lower) || seenInBatch.has(lower);
+    if (seenInBatch.has(lower)) {
+      continue;
+    }
+    seenInBatch.add(lower);
 
+    const isDuplicate = existingSet.has(lower);
     if (isDuplicate) {
       duplicateCount++;
-    } else {
-      seenInBatch.add(lower);
     }
 
     const catalogCat = catalogMap.get(lower);
-    const category = catalogCat || "Other";
+    const parsedCat = combinedCandidates[idx]?.category;
+    const category =
+      catalogCat ||
+      (parsedCat
+        ? parsedCat.charAt(0).toUpperCase() + parsedCat.slice(1)
+        : "Other");
 
     items.push({
       id: `cv-skill-${idx}-${Date.now()}`,
@@ -433,6 +581,8 @@ export function prepareProjectImports(
     const technologies = Array.isArray(cvProj.technologies)
       ? cvProj.technologies.map((t) => t.trim()).filter(Boolean)
       : [];
+    const githubUrl = cvProj.githubUrl?.trim() || undefined;
+    const liveUrl = cvProj.liveUrl?.trim() || undefined;
 
     const lower = title.toLowerCase();
     const isDuplicate = existingSet.has(lower) || seenInBatch.has(lower);
@@ -448,8 +598,8 @@ export function prepareProjectImports(
       title,
       description,
       technologies,
-      githubUrl: cvProj.githubUrl,
-      liveUrl: cvProj.liveUrl,
+      githubUrl,
+      liveUrl,
       isDuplicate,
       selected: !isDuplicate && Boolean(title),
     };

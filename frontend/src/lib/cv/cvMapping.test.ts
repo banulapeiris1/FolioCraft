@@ -13,6 +13,7 @@ import type {
   StructuredCvExperience,
   StructuredCvSkill,
   StructuredCvProject,
+  CategorizedSkills,
 } from "@/types/cv";
 import type { PortfolioFormData } from "@/types/portfolio";
 import type { Experience } from "@/types/experience";
@@ -198,6 +199,46 @@ test("CV-09: Mapping & Normalization Utilities Test Suite", async (t) => {
     assert.equal(result.merged.name, "Jane Doe");
   });
 
+  await t.test("2.4 Profile Merge: Updates title when provided and empty in current profile, and captures fieldDiffs accurately", () => {
+    const current: Partial<PortfolioFormData> = {
+      name: "Jane Doe",
+      title: "",
+      email: "jane@example.com",
+    };
+    const parsed: StructuredCvPersonal = {
+      fullName: "Jane Doe",
+      professionalTitle: "Principal Systems Architect",
+      email: "jane@example.com",
+    };
+
+    const result = mergeProfileData(current, parsed, { overwriteExisting: false });
+    assert.equal(result.merged.title, "Principal Systems Architect");
+    assert.ok(result.changedFields.includes("title"));
+    assert.ok(result.preservedFields.includes("name"));
+
+    const titleDiff = result.fieldDiffs.find((d) => d.field === "title");
+    assert.ok(titleDiff);
+    assert.equal(titleDiff?.willUpdate, true);
+    assert.equal(titleDiff?.status, "new");
+  });
+
+  await t.test("2.5 Profile Merge: Overwrites title when overwriteExisting is true", () => {
+    const current: Partial<PortfolioFormData> = {
+      name: "Jane Doe",
+      title: "Junior Dev",
+    };
+    const parsed: StructuredCvPersonal = {
+      professionalTitle: "Senior Architect",
+    };
+
+    const result = mergeProfileData(current, parsed, { overwriteExisting: true });
+    assert.equal(result.merged.title, "Senior Architect");
+    const titleDiff = result.fieldDiffs.find((d) => d.field === "title");
+    assert.ok(titleDiff);
+    assert.equal(titleDiff?.willUpdate, true);
+    assert.equal(titleDiff?.status, "update");
+  });
+
   // -------------------------------------------------------------
   // Section 3: Experience Mapping & Deduplication Tests
   // -------------------------------------------------------------
@@ -297,6 +338,51 @@ test("CV-09: Mapping & Normalization Utilities Test Suite", async (t) => {
     assert.equal(items[0]!.isDateValid, false);
   });
 
+  await t.test("3.4 Experience: Preserves extracted technologies in description", () => {
+    const parsed: StructuredCvExperience[] = [
+      {
+        company: "Stripe",
+        position: "Software Engineer",
+        description: "Built payments infrastructure.",
+        startDate: "2021-01-01",
+        endDate: "2023-01-01",
+        isCurrent: false,
+        technologies: ["Node.js", "TypeScript", "PostgreSQL"],
+      },
+    ];
+
+    const { items } = prepareExperienceImports(parsed, []);
+    assert.equal(items.length, 1);
+    assert.ok(items[0]?.description.includes("Built payments infrastructure."));
+    assert.ok(items[0]?.description.includes("Technologies: Node.js, TypeScript, PostgreSQL"));
+    assert.deepEqual(items[0]?.technologies, ["Node.js", "TypeScript", "PostgreSQL"]);
+  });
+
+  await t.test("3.5 Experience: Independent jobs at different companies with same title are NOT merged", () => {
+    const parsed: StructuredCvExperience[] = [
+      {
+        company: "ABC Pvt Ltd",
+        position: "Software Engineer",
+        startDate: "2020-01-01",
+        isCurrent: false,
+      },
+      {
+        company: "XYZ Pvt Ltd",
+        position: "Software Engineer",
+        startDate: "2022-01-01",
+        isCurrent: false,
+      },
+    ];
+
+    const { items, duplicateCount } = prepareExperienceImports(parsed, []);
+    assert.equal(duplicateCount, 0);
+    assert.equal(items.length, 2);
+    assert.equal(items[0]?.company, "ABC Pvt Ltd");
+    assert.equal(items[1]?.company, "XYZ Pvt Ltd");
+    assert.equal(items[0]?.isDuplicate, false);
+    assert.equal(items[1]?.isDuplicate, false);
+  });
+
   // -------------------------------------------------------------
   // Section 4: Skills Mapping & Category Resolution Tests
   // -------------------------------------------------------------
@@ -366,6 +452,45 @@ test("CV-09: Mapping & Normalization Utilities Test Suite", async (t) => {
     assert.equal(items[1]!.selected, true);
   });
 
+  await t.test("4.4 Skills: Deduplicates flat skills and categorizedSkills with case normalization", () => {
+    const flatSkills: StructuredCvSkill[] = [
+      { name: "Java" },
+      { name: "Python" },
+    ];
+    const categorizedSkills: Partial<CategorizedSkills> = {
+      languages: [
+        { name: "java" }, // Duplicate of flat "Java" with different casing
+        { name: "JAVA" }, // Another case variation
+        { name: "Go" },
+      ],
+      frontend: [
+        { name: "React" },
+      ],
+    };
+
+    const { items, duplicateCount } = prepareSkillImports(flatSkills, [], [], categorizedSkills);
+    const names = items.map((i) => i.name.toLowerCase());
+
+    // "java" should appear exactly once
+    assert.equal(names.filter((n) => n === "java").length, 1);
+    // Total items: Java, Python, Go, React -> 4
+    assert.equal(items.length, 4);
+    assert.equal(duplicateCount, 0);
+  });
+
+  await t.test("4.5 Skills: Retains category from categorizedSkills when not in catalog", () => {
+    const categorizedSkills: Partial<CategorizedSkills> = {
+      tools: [
+        { name: "CustomProprietaryTool" },
+      ],
+    };
+
+    const { items } = prepareSkillImports([], [], [], categorizedSkills);
+    assert.equal(items.length, 1);
+    assert.equal(items[0]?.name, "CustomProprietaryTool");
+    assert.equal(items[0]?.category, "Tools");
+  });
+
   // -------------------------------------------------------------
   // Section 5: Projects Mapping & Deduplication Tests
   // -------------------------------------------------------------
@@ -423,5 +548,60 @@ test("CV-09: Mapping & Normalization Utilities Test Suite", async (t) => {
 
     assert.equal(items[1]!.isDuplicate, false);
     assert.equal(items[1]!.selected, true);
+  });
+
+  await t.test("5.3 Projects: Preserves githubUrl and liveUrl correctly", () => {
+    const parsed: StructuredCvProject[] = [
+      {
+        title: "FolioCraft Platform",
+        description: "Portfolio management suite",
+        githubUrl: "https://github.com/foliocraft/core",
+        liveUrl: "https://foliocraft.dev",
+        technologies: ["Next.js", "PostgreSQL"],
+      },
+    ];
+
+    const { items } = prepareProjectImports(parsed, []);
+    assert.equal(items.length, 1);
+    assert.equal(items[0]?.githubUrl, "https://github.com/foliocraft/core");
+    assert.equal(items[0]?.liveUrl, "https://foliocraft.dev");
+  });
+
+  await t.test("5.4 Projects: Projects with different titles but similar descriptions are NOT merged", () => {
+    const parsed: StructuredCvProject[] = [
+      {
+        title: "Alpha Project",
+        description: "A web application built with React and Node.",
+        technologies: [],
+      },
+      {
+        title: "Beta Project",
+        description: "A web application built with React and Node.",
+        technologies: [],
+      },
+    ];
+
+    const { items, duplicateCount } = prepareProjectImports(parsed, []);
+    assert.equal(duplicateCount, 0);
+    assert.equal(items.length, 2);
+    assert.equal(items[0]?.isDuplicate, false);
+    assert.equal(items[1]?.isDuplicate, false);
+  });
+
+  await t.test("5.5 Projects: User-corrected values from Phase 3 review reach prepared project items", () => {
+    const reviewedProject: StructuredCvProject = {
+      title: "Corrected Title By User",
+      description: "User corrected description",
+      technologies: ["Vue.js", "FastAPI"],
+      githubUrl: "https://github.com/user/corrected",
+      liveUrl: "https://corrected.app",
+    };
+
+    const { items } = prepareProjectImports([reviewedProject], []);
+    assert.equal(items[0]?.title, "Corrected Title By User");
+    assert.equal(items[0]?.description, "User corrected description");
+    assert.deepEqual(items[0]?.technologies, ["Vue.js", "FastAPI"]);
+    assert.equal(items[0]?.githubUrl, "https://github.com/user/corrected");
+    assert.equal(items[0]?.liveUrl, "https://corrected.app");
   });
 });
