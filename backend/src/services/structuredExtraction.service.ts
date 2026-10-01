@@ -1,5 +1,8 @@
 import type {
+  CvSectionType,
   DetectedCvSections,
+  SectionDetail,
+  SectionStatus,
   StructuredCvData,
   StructuredCvEducation,
   StructuredCvExperience,
@@ -524,11 +527,23 @@ export function extractProjects(projectsText?: string): StructuredCvProject[] {
 export function extractStructuredCv(
   sections: DetectedCvSections
 ): StructuredCvData {
+  const sectionStatuses: Partial<Record<CvSectionType, SectionStatus>> = {};
+  if (sections.details) {
+    for (const [sec, detail] of Object.entries(sections.details) as [
+      CvSectionType,
+      SectionDetail
+    ][]) {
+      sectionStatuses[sec] = detail.status;
+    }
+  }
+
   return {
     personal: extractPersonalInfo(sections.headerText, sections.summary),
     experience: extractExperience(sections.experience),
     education: extractEducation(sections.education),
     skills: extractSkills(sections.skills),
     projects: extractProjects(sections.projects),
+    sectionStatuses,
+    rawText: sections.rawText,
   };
 }

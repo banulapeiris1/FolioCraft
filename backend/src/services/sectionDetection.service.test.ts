@@ -352,4 +352,151 @@ Line 5: Degree in Software Engineering (First Class)
     assert.equal(matchUnknownSectionHeading("Volunteer Experience"), "Volunteer Experience");
     assert.equal(matchUnknownSectionHeading("I am certified in AWS."), null);
   });
+
+  // Phase 1 Explicit Requirements Test Scenarios (Tests 1 through 12)
+  await t.test("Phase 1: Explicit 12 Section Detection Scenarios", async (p1) => {
+    // Test 1: WORK EXPERIENCE
+    await p1.test("Test 1: 'WORK EXPERIENCE' heading is detected as experience", () => {
+      const cv = "WORK EXPERIENCE\nSoftware Engineer at TechCorp\n2022 - Present";
+      const result = detectCvSections(cv);
+      assert.equal(result.details.experience.status, "detected");
+      assert.equal(result.details.experience.confidence, "high");
+      assert.match(result.experience!, /Software Engineer at TechCorp/);
+    });
+
+    // Test 2: Professional Experience
+    await p1.test("Test 2: 'Professional Experience' heading is detected as experience", () => {
+      const cv = "Professional Experience\nBackend Lead at Cloud Solutions\n2021 - 2024";
+      const result = detectCvSections(cv);
+      assert.equal(result.details.experience.status, "detected");
+      assert.equal(result.details.experience.confidence, "high");
+      assert.match(result.experience!, /Backend Lead at Cloud Solutions/);
+    });
+
+    // Test 3: Technical Skills
+    await p1.test("Test 3: 'Technical Skills' heading is detected as skills", () => {
+      const cv = "Technical Skills\nJavaScript, TypeScript, React, Node.js";
+      const result = detectCvSections(cv);
+      assert.equal(result.details.skills.status, "detected");
+      assert.equal(result.details.skills.confidence, "high");
+      assert.match(result.skills!, /JavaScript, TypeScript/);
+    });
+
+    // Test 4: Tech Stack
+    await p1.test("Test 4: 'Tech Stack' heading is detected as skills", () => {
+      const cv = "Tech Stack\nPostgreSQL, Redis, Docker, Kubernetes";
+      const result = detectCvSections(cv);
+      assert.equal(result.details.skills.status, "detected");
+      assert.equal(result.details.skills.confidence, "high");
+      assert.match(result.skills!, /PostgreSQL, Redis/);
+    });
+
+    // Test 5: Academic Qualifications
+    await p1.test("Test 5: 'Academic Qualifications' heading is detected as education", () => {
+      const cv = "Academic Qualifications\nBSc in Computer Science, University of Moratuwa";
+      const result = detectCvSections(cv);
+      assert.equal(result.details.education.status, "detected");
+      assert.equal(result.details.education.confidence, "high");
+      assert.match(result.education!, /BSc in Computer Science/);
+    });
+
+    // Test 6: Technical Projects
+    await p1.test("Test 6: 'Technical Projects' heading is detected as projects", () => {
+      const cv = "Technical Projects\nFolioCraft - AI CV to Portfolio Builder\nReact, Node";
+      const result = detectCvSections(cv);
+      assert.equal(result.details.projects.status, "detected");
+      assert.equal(result.details.projects.confidence, "high");
+      assert.match(result.projects!, /FolioCraft/);
+    });
+
+    // Test 7: Achievements
+    await p1.test("Test 7: 'Achievements' heading is detected as achievements", () => {
+      const cv = "Achievements\nWinner of National Hackathon 2024\nDean's List 2023";
+      const result = detectCvSections(cv);
+      assert.equal(result.details.achievements.status, "detected");
+      assert.equal(result.details.achievements.confidence, "high");
+      assert.match(result.achievements!, /Winner of National Hackathon 2024/);
+    });
+
+    // Test 8: Leadership Experience
+    await p1.test("Test 8: 'Leadership Experience' heading is detected as leadership", () => {
+      const cv = "Leadership Experience\nPresident, Computer Science Society (2023 - 2024)";
+      const result = detectCvSections(cv);
+      assert.equal(result.details.leadership.status, "detected");
+      assert.equal(result.details.leadership.confidence, "high");
+      assert.match(result.leadership!, /President, Computer Science Society/);
+    });
+
+    // Test 9: CV with no Experience heading
+    await p1.test("Test 9: CV with no Experience heading marks experience as 'needs_review'", () => {
+      const cv = "Jane Doe\njane@example.com\n\nEDUCATION\nBSc in IT\n\nSKILLS\nPython, SQL";
+      const result = detectCvSections(cv);
+      assert.equal(result.details.experience.status, "needs_review");
+      assert.equal(result.details.experience.confidence, "low");
+      assert.equal(result.experience, undefined);
+    });
+
+    // Test 10: Unknown section
+    await p1.test("Test 10: Unknown section 'CERTIFICATIONS' is preserved in unknownSections and unknownDetails", () => {
+      const cv = "CERTIFICATIONS\nAWS Certified Cloud Practitioner\nHashiCorp Terraform Associate";
+      const result = detectCvSections(cv);
+      assert.ok(result.unknownSections);
+      assert.match(
+        result.unknownSections["CERTIFICATIONS"] || "",
+        /AWS Certified Cloud Practitioner/
+      );
+      assert.ok(result.unknownDetails);
+      const certDetail = result.unknownDetails.find(
+        (u) => u.name.toUpperCase() === "CERTIFICATIONS"
+      );
+      assert.ok(certDetail);
+      assert.equal(certDetail.status, "detected");
+      assert.match(certDetail.text, /AWS Certified Cloud Practitioner/);
+    });
+
+    // Test 11: Normal sentence containing the word 'experience'
+    await p1.test("Test 11: Normal sentence 'I have experience working with React and Node.js.' does NOT create an experience section", () => {
+      const cv = "SUMMARY\nI have experience working with React and Node.js.\n\nEDUCATION\nBSc in Computer Science";
+      const result = detectCvSections(cv);
+      assert.equal(result.details.experience.status, "needs_review");
+      assert.equal(result.experience, undefined);
+      assert.match(
+        result.summary!,
+        /I have experience working with React and Node\.js\./
+      );
+      assert.match(result.education!, /BSc in Computer Science/);
+    });
+
+    // Test 12: Multiple sections without blank lines
+    await p1.test("Test 12: Multiple sections without blank lines are isolated to their own content", () => {
+      const cv = `WORK EXPERIENCE
+ABC Company
+Software Engineer
+2025 - Present
+Built applications.
+EDUCATION
+University of Moratuwa
+BSc in IT
+SKILLS
+React
+Node.js`;
+      const result = detectCvSections(cv);
+      assert.equal(result.details.experience.status, "detected");
+      assert.equal(result.details.education.status, "detected");
+      assert.equal(result.details.skills.status, "detected");
+
+      assert.equal(
+        result.experience,
+        "ABC Company\nSoftware Engineer\n2025 - Present\nBuilt applications."
+      );
+      assert.equal(
+        result.education,
+        "University of Moratuwa\nBSc in IT"
+      );
+      assert.equal(
+        result.skills,
+        "React\nNode.js"
+      );
+    });
+  });
 });

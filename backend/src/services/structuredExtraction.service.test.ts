@@ -315,10 +315,7 @@ Tech Stack: Go, gRPC, Redis
 
   // 13. Missing fields
   await t.test("13. Safely handles missing sections without hallucinating values", () => {
-    const emptySections: DetectedCvSections = {
-      detectedOrder: [],
-      rawText: "",
-    };
+    const emptySections: DetectedCvSections = detectCvSections("");
 
     const structured = extractStructuredCv(emptySections);
     assert.deepEqual(structured.personal, {});

@@ -147,6 +147,8 @@ export class CvUploadService {
 
       // Step C: CV-06 Structured entity extraction
       const structuredData = extractStructuredCv(sections);
+      structuredData.totalPages = extraction.totalPages;
+      structuredData.pageTexts = extraction.pages;
 
       // Step D: Update database record to COMPLETED with raw text and structured JSON
       const updateRes = await pool.query<CvUploadDbRow>(
