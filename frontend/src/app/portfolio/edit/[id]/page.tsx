@@ -334,8 +334,17 @@ export default function EditPortfolioPage({
                     : "Upload your CV in PDF format to parse and extract your profile info, experience, education, skills, and projects."}
                 </p>
               </div>
-              <div className="text-xs font-mono text-[#64748b] bg-white border border-[#eae6f5] px-3 py-1.5 rounded-xl self-start sm:self-auto">
-                ID: {portfolioId}
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <Link
+                  href={`/portfolio/templates?id=${encodeURIComponent(portfolioId)}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#6e56cf] bg-[#f3f0ff] hover:bg-[#eae4fc] border border-[#dcd3f8] transition-all hover:shadow-xs"
+                >
+                  <SparklesIcon className="w-3.5 h-3.5" />
+                  <span>Browse Templates</span>
+                </Link>
+                <div className="text-xs font-mono text-[#64748b] bg-white border border-[#eae6f5] px-3 py-1.5 rounded-xl">
+                  ID: {portfolioId}
+                </div>
               </div>
             </div>
 
@@ -426,6 +435,7 @@ export default function EditPortfolioPage({
             {activeTab === "profile" ? (
               <PortfolioForm
                 mode="edit"
+                portfolioId={portfolioId}
                 initialData={initialData}
                 isSubmitting={isSubmitting}
                 serverError={serverError}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   PortfolioFormData,
   PortfolioFormErrors,
-  TemplateOption,
+  PortfolioTemplateId,
 } from "@/types/portfolio";
 import {
   UserIcon,
@@ -15,28 +15,11 @@ import {
   SparklesIcon,
   AlertCircleIcon,
 } from "./PortfolioIcons";
-
-const TEMPLATES: TemplateOption[] = [
-  {
-    id: "modern",
-    name: "Modern Developer",
-    description: "Tech-stack chips, interactive cards, and vibrant code-focused accents.",
-    badge: "Most Popular",
-  },
-  {
-    id: "minimal",
-    name: "Minimal Editorial",
-    description: "Typography-first layout focused purely on content clarity and elegance.",
-  },
-  {
-    id: "professional",
-    name: "Classic Executive",
-    description: "Structured corporate presentation suited for leadership and consultants.",
-  },
-];
+import TemplateSelector from "./TemplateSelector";
 
 export interface PortfolioFormProps {
   mode: "create" | "edit";
+  portfolioId?: string;
   initialData?: Partial<PortfolioFormData>;
   onSubmit?: (data: PortfolioFormData) => void;
   onCancel?: () => void;
@@ -68,6 +51,7 @@ function getInitialFormData(initialData: Partial<PortfolioFormData> = {}): Portf
 
 export default function PortfolioForm({
   mode,
+  portfolioId,
   initialData = {},
   onSubmit,
   onCancel,
@@ -682,47 +666,29 @@ export default function PortfolioForm({
 
         {/* Template Selection */}
         <div className="space-y-3">
-          <label className="block text-xs font-semibold text-[#0f172a] uppercase tracking-wider">
-            Curated Presentation Theme
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {TEMPLATES.map((tmpl) => {
-              const isSelected = formData.template === tmpl.id;
-              return (
-                <button
-                  key={tmpl.id}
-                  type="button"
-                  onClick={() => handleChange("template", tmpl.id)}
-                  className={`text-left p-4 rounded-xl border-2 transition-all cursor-pointer relative ${
-                    isSelected
-                      ? "border-[#6e56cf] bg-[#fcfbfe] shadow-sm ring-2 ring-[#6e56cf]/20"
-                      : "border-[#eae6f5] bg-white hover:border-[#dcd3f8] hover:bg-[#faf9fd]"
-                  }`}
-                >
-                  {tmpl.badge && (
-                    <span className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-[#6e56cf] text-white">
-                      {tmpl.badge}
-                    </span>
-                  )}
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-sm font-bold text-[#0f172a]">
-                      {tmpl.name}
-                    </span>
-                    <span
-                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                        isSelected ? "border-[#6e56cf] bg-[#6e56cf]" : "border-[#cbd5e1]"
-                      }`}
-                    >
-                      {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[#64748b] leading-relaxed">
-                    {tmpl.description}
-                  </p>
-                </button>
-              );
-            })}
+          <div className="flex items-center justify-between">
+            <label
+              id="template-selector-label"
+              className="block text-xs font-semibold text-[#0f172a] uppercase tracking-wider"
+            >
+              Curated Presentation Theme
+            </label>
+            {portfolioId && (
+              <Link
+                href={`/portfolio/templates?id=${encodeURIComponent(portfolioId)}`}
+                className="text-xs font-semibold text-[#6e56cf] hover:text-[#5d46be] inline-flex items-center gap-1 hover:underline"
+              >
+                <span>Browse Gallery &amp; Previews</span>
+                <span aria-hidden="true">&rarr;</span>
+              </Link>
+            )}
           </div>
+          <TemplateSelector
+            value={(formData.template as PortfolioTemplateId) || "modern"}
+            onChange={(selectedTemplate) => handleChange("template", selectedTemplate)}
+            disabled={isSubmitting}
+            aria-labelledby="template-selector-label"
+          />
         </div>
       </section>
 
