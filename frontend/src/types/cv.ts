@@ -17,6 +17,7 @@ export type CvSectionType =
   | "education"
   | "skills"
   | "projects"
+  | "extracurricular"
   | "certifications"
   | "achievements"
   | "leadership"
@@ -25,6 +26,14 @@ export type CvSectionType =
   | "other";
 
 export type SectionStatus = "detected" | "empty" | "ambiguous" | "missing";
+
+export interface EntitySource {
+  page?: number;
+  section?: string;
+  text?: string;
+  classifier?: string;
+  confidence?: Confidence;
+}
 
 export interface ReviewIssue {
   field: string;
@@ -56,6 +65,7 @@ export interface StructuredCvExperience {
   isCurrent: boolean;
   technologies?: string[];
   confidence?: Confidence;
+  source?: EntitySource;
 }
 
 export interface StructuredCvEducation {
@@ -66,6 +76,7 @@ export interface StructuredCvEducation {
   startDate?: string;
   endDate?: string;
   confidence?: Confidence;
+  source?: EntitySource;
 }
 
 export interface StructuredCvSkill {
@@ -81,6 +92,7 @@ export interface StructuredCvProject {
   githubUrl?: string;
   liveUrl?: string;
   confidence?: Confidence;
+  source?: EntitySource;
 }
 
 export interface StructuredCvAchievement {
@@ -89,6 +101,7 @@ export interface StructuredCvAchievement {
   date?: string;
   issuer?: string;
   confidence?: Confidence;
+  source?: EntitySource;
 }
 
 export interface StructuredCvLeadership {
@@ -98,6 +111,18 @@ export interface StructuredCvLeadership {
   endDate?: string;
   description?: string;
   confidence?: Confidence;
+  source?: EntitySource;
+}
+
+export interface StructuredCvExtracurricular {
+  activity: string;
+  role?: string;
+  organization?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  confidence?: Confidence;
+  source?: EntitySource;
 }
 
 export interface CategorizedSkills {
@@ -119,11 +144,14 @@ export interface StructuredCvData {
   categorizedSkills?: CategorizedSkills;
   achievements?: StructuredCvAchievement[];
   leadership?: StructuredCvLeadership[];
+  extracurricular?: StructuredCvExtracurricular[];
+  extracurricularActivities?: StructuredCvExtracurricular[];
   reviewIssues?: ReviewIssue[];
   sectionStatuses?: Partial<Record<CvSectionType, SectionStatus>>;
   rawText?: string;
   totalPages?: number;
   pageTexts?: string[];
+  parsingMetadata?: Record<string, unknown>;
 }
 
 export interface CvUploadEntity {

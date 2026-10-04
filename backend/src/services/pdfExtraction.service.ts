@@ -91,12 +91,10 @@ export async function extractTextFromPdf(
   const shouldNormalize = options.normalizeWhitespace !== false;
 
   try {
-    // Convert Node Buffer to Uint8Array view for unpdf
-    const uint8Array = new Uint8Array(
-      buffer.buffer,
-      buffer.byteOffset,
-      buffer.byteLength
-    );
+    // Convert Node Buffer to an independent Uint8Array copy for unpdf/pdfjs
+    // to prevent worker thread transfers from detaching the caller's ArrayBuffer
+    const uint8Array = new Uint8Array(buffer.length);
+    uint8Array.set(buffer);
 
     const result = await extractText(uint8Array, { mergePages: false });
 

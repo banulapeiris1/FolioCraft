@@ -47,7 +47,8 @@ export type CvSectionType =
   | "skills"
   | "projects"
   | "achievements"
-  | "leadership";
+  | "leadership"
+  | "extracurricular";
 
 /**
  * Detailed section metadata including status, confidence, and text content.
@@ -157,6 +158,14 @@ export interface CategorizedSkills {
 /**
  * Structured project entry.
  */
+export interface EntitySource {
+  page?: number;
+  section?: string;
+  text?: string;
+  classifier?: "deterministic" | "visual" | "gemini" | "reconciled";
+  confidence?: Confidence;
+}
+
 export interface StructuredCvProject {
   title: string;
   description?: string;
@@ -164,6 +173,7 @@ export interface StructuredCvProject {
   githubUrl?: string;
   liveUrl?: string;
   confidence?: Confidence;
+  source?: EntitySource;
 }
 
 /**
@@ -174,10 +184,11 @@ export interface StructuredCvAchievement {
   description?: string;
   date?: string;
   confidence?: Confidence;
+  source?: EntitySource;
 }
 
 /**
- * Structured leadership or extracurricular activity entry.
+ * Structured leadership entry.
  */
 export interface StructuredCvLeadership {
   role: string;
@@ -186,6 +197,21 @@ export interface StructuredCvLeadership {
   startDate?: string;
   endDate?: string;
   confidence?: Confidence;
+  source?: EntitySource;
+}
+
+/**
+ * Structured extracurricular activity entry.
+ */
+export interface StructuredCvExtracurricular {
+  activity: string;
+  role?: string;
+  organization?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  confidence?: Confidence;
+  source?: EntitySource;
 }
 
 /**
@@ -222,12 +248,57 @@ export interface StructuredCvData {
   categorizedSkills?: CategorizedSkills;
   achievements?: StructuredCvAchievement[];
   leadership?: StructuredCvLeadership[];
+  extracurricular?: StructuredCvExtracurricular[];
+  extracurricularActivities?: StructuredCvExtracurricular[];
   reviewIssues?: ReviewIssue[];
   sectionStatuses?: Partial<Record<CvSectionType, SectionStatus>>;
   fieldEvidences?: Record<string, FieldEvidence>;
   rawText?: string;
   totalPages?: number;
   pageTexts?: string[];
+  parsingMetadata?: {
+    parserVersion?: string;
+    layoutType?: string;
+    hasSidebar?: boolean;
+    visualHeadingsDetected?: string[];
+    usedGemini?: boolean;
+    geminiUsed?: boolean;
+    geminiReason?: string;
+    layoutAnalysis?: unknown;
+    reconciliationApplied?: boolean;
+    conflictCount?: number;
+    conflictsCount?: number;
+    reconciliationNotes?: string[];
+  };
+}
+
+export interface VisualHeading {
+  text: string;
+  x?: number;
+  y: number;
+  fontSize: number;
+  page: number;
+  isBold?: boolean;
+}
+
+export interface CvLayoutAnalysis {
+  layoutType: "single-column" | "two-column" | "multi-column" | "sidebar";
+  columnCount: number;
+  columns?: Array<{
+    columnIndex: number;
+    left: number;
+    right: number;
+    width: number;
+    blockCount: number;
+  }>;
+  sidebar: {
+    detected: boolean;
+    position?: "left" | "right";
+    widthRatio?: number;
+  };
+  visualHeadings: VisualHeading[];
+  medianFontSize: number;
+  totalPages?: number;
 }
 
 

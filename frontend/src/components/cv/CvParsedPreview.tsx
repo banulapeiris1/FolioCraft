@@ -9,6 +9,7 @@ import type {
   StructuredCvData,
   StructuredCvEducation,
   StructuredCvExperience,
+  StructuredCvExtracurricular,
   StructuredCvLeadership,
   StructuredCvPersonal,
   StructuredCvProject,
@@ -181,6 +182,17 @@ export default function CvParsedPreview({
   const [leadershipModalOpen, setLeadershipModalOpen] = useState(false);
   const [editingLeadershipIndex, setEditingLeadershipIndex] = useState<number | null>(null);
   const [leadershipForm, setLeadershipForm] = useState<StructuredCvLeadership>({
+    role: "",
+    organization: "",
+    startDate: "",
+    endDate: "",
+    description: "",
+  });
+
+  const [extracurricularModalOpen, setExtracurricularModalOpen] = useState(false);
+  const [editingExtracurricularIndex, setEditingExtracurricularIndex] = useState<number | null>(null);
+  const [extracurricularForm, setExtracurricularForm] = useState<StructuredCvExtracurricular>({
+    activity: "",
     role: "",
     organization: "",
     startDate: "",
@@ -507,6 +519,130 @@ export default function CvParsedPreview({
   };
 
   // ==========================================================================
+  // EXTRACURRICULAR HANDLERS & PROJECT/EXTRACURRICULAR RECLASSIFICATION
+  // ==========================================================================
+  const handleOpenAddExtracurricular = () => {
+    setExtracurricularForm({
+      activity: "",
+      role: "",
+      organization: "",
+      startDate: "",
+      endDate: "",
+      description: "",
+    });
+    setEditingExtracurricularIndex(null);
+    setExtracurricularModalOpen(true);
+  };
+
+  const handleOpenEditExtracurricular = (idx: number) => {
+    const list =
+      cvData.extracurricular || cvData.extracurricularActivities || [];
+    const item = list[idx];
+    if (!item) return;
+    setExtracurricularForm({ ...item });
+    setEditingExtracurricularIndex(idx);
+    setExtracurricularModalOpen(true);
+  };
+
+  const handleSaveExtracurricular = () => {
+    if (!extracurricularForm.activity.trim()) return;
+
+    const list = [
+      ...(cvData.extracurricular || cvData.extracurricularActivities || []),
+    ];
+    const itemToSave: StructuredCvExtracurricular = {
+      ...extracurricularForm,
+      activity: extracurricularForm.activity.trim(),
+      role: extracurricularForm.role?.trim() || undefined,
+      organization: extracurricularForm.organization?.trim() || undefined,
+      startDate: extracurricularForm.startDate?.trim() || undefined,
+      endDate: extracurricularForm.endDate?.trim() || undefined,
+      description: extracurricularForm.description?.trim() || undefined,
+      confidence: "high",
+    };
+
+    if (editingExtracurricularIndex !== null) {
+      list[editingExtracurricularIndex] = itemToSave;
+    } else {
+      list.push(itemToSave);
+    }
+
+    updateData({
+      ...cvData,
+      extracurricular: list,
+      extracurricularActivities: list,
+    });
+    setExtracurricularModalOpen(false);
+  };
+
+  const handleDeleteExtracurricular = (idx: number) => {
+    const list = (
+      cvData.extracurricular ||
+      cvData.extracurricularActivities ||
+      []
+    ).filter((_, i) => i !== idx);
+    updateData({
+      ...cvData,
+      extracurricular: list,
+      extracurricularActivities: list,
+    });
+  };
+
+  const handleMoveProjectToExtracurricular = (idx: number) => {
+    const project = cvData.projects[idx];
+    if (!project) return;
+    const remainingProjects = cvData.projects.filter((_, i) => i !== idx);
+    const currentList = [
+      ...(cvData.extracurricular || cvData.extracurricularActivities || []),
+    ];
+    const newEntry: StructuredCvExtracurricular = {
+      activity: project.title,
+      description: project.description,
+      confidence: "high",
+      source: {
+        section: "Extracurricular (Moved by User)",
+        text: project.title,
+        classifier: "user",
+        confidence: "high",
+      },
+    };
+    const updatedActivities = [...currentList, newEntry];
+    updateData({
+      ...cvData,
+      projects: remainingProjects,
+      extracurricular: updatedActivities,
+      extracurricularActivities: updatedActivities,
+    });
+  };
+
+  const handleMoveExtracurricularToProject = (idx: number) => {
+    const list =
+      cvData.extracurricular || cvData.extracurricularActivities || [];
+    const item = list[idx];
+    if (!item) return;
+    const remainingActivities = list.filter((_, i) => i !== idx);
+    const currentProjects = [...(cvData.projects || [])];
+    const newProject: StructuredCvProject = {
+      title: item.activity,
+      description: item.description,
+      technologies: [],
+      confidence: "high",
+      source: {
+        section: "Projects (Moved by User)",
+        text: item.activity,
+        classifier: "user",
+        confidence: "high",
+      },
+    };
+    updateData({
+      ...cvData,
+      projects: [...currentProjects, newProject],
+      extracurricular: remainingActivities,
+      extracurricularActivities: remainingActivities,
+    });
+  };
+
+  // ==========================================================================
   // EDUCATION HANDLERS
   // ==========================================================================
   const handleOpenAddEducation = () => {
@@ -626,7 +762,7 @@ export default function CvParsedPreview({
         </div>
 
         {/* Metric counts bar */}
-        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
           <button
             type="button"
             onClick={() => scrollToSection("section-profile")}
@@ -720,6 +856,19 @@ export default function CvParsedPreview({
             </span>
             <span className="text-sm font-bold text-[#0f172a]">
               {cvData.leadership?.length || 0}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => scrollToSection("section-extracurricular")}
+            className="p-3 rounded-2xl bg-[#faf9fd] border border-[#f0ecf9] hover:border-[#6e56cf]/40 transition-colors text-left cursor-pointer"
+          >
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748b] block mb-0.5">
+              Activities
+            </span>
+            <span className="text-sm font-bold text-[#0f172a]">
+              {(cvData.extracurricular || cvData.extracurricularActivities)?.length || 0}
             </span>
           </button>
         </div>
@@ -1147,6 +1296,11 @@ export default function CvParsedPreview({
                             {proj.title}
                           </h4>
                           <ConfidenceBadge confidence={proj.confidence} />
+                          {proj.source?.section && (
+                            <span className="text-[10px] text-[#6e56cf] bg-[#f3f0ff] px-2 py-0.5 rounded-full font-medium border border-[#e4daf7]">
+                              Source: {proj.source.section}
+                            </span>
+                          )}
                         </div>
 
                         {/* URLs */}
@@ -1177,6 +1331,14 @@ export default function CvParsedPreview({
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveProjectToExtracurricular(idx)}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-[#6e56cf] bg-[#f3f0ff] hover:bg-[#e8e2fb] transition-colors cursor-pointer mr-1"
+                          title="Move this item to Extracurricular Activities"
+                        >
+                          Move to Activities
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleOpenEditProject(idx)}
@@ -1523,6 +1685,123 @@ export default function CvParsedPreview({
             ) : (
               <div className="p-6 rounded-2xl border border-dashed border-[#dcd3f8] text-center text-xs text-[#94a3b8]">
                 No leadership roles recorded. Click &quot;Add Leadership&quot; to include mentoring or club service.
+              </div>
+            )}
+          </div>
+
+          {/* ---------------------------------------------------------------- */}
+          {/* SECTION: EXTRACURRICULAR ACTIVITIES                             */}
+          {/* ---------------------------------------------------------------- */}
+          <div
+            id="section-extracurricular"
+            className="bg-white rounded-3xl border border-[#eae6f5] p-6 shadow-xs scroll-mt-6"
+          >
+            <div className="flex items-center justify-between pb-4 border-b border-[#eae6f5] mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#f3f0ff] text-[#6e56cf] flex items-center justify-center">
+                  <UserIcon className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#0f172a]">
+                    Extracurricular Activities
+                  </h3>
+                  <p className="text-xs text-[#64748b]">
+                    Clubs, student societies, sports teams, event organizing, and campus involvement.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-1 rounded-lg bg-[#f8f7fd] border border-[#eae6f5] text-xs font-bold text-[#6e56cf]">
+                  {(cvData.extracurricular || cvData.extracurricularActivities)?.length || 0}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleOpenAddExtracurricular}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <PlusIcon className="w-3.5 h-3.5" />
+                  <span>Add Activity</span>
+                </button>
+              </div>
+            </div>
+
+            {(cvData.extracurricular || cvData.extracurricularActivities) &&
+            (cvData.extracurricular || cvData.extracurricularActivities)!.length > 0 ? (
+              <div className="space-y-3">
+                {(cvData.extracurricular || cvData.extracurricularActivities)!.map((act, idx) => (
+                  <div
+                    key={idx}
+                    className="p-4 rounded-2xl bg-[#faf9fd] border border-[#f0ecf9] hover:border-[#e2dcfa] transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-sm font-bold text-[#0f172a]">
+                            {act.activity}
+                          </h4>
+                          {act.role && (
+                            <span className="text-[#6e56cf] text-xs font-semibold">
+                              • {act.role}
+                            </span>
+                          )}
+                          {act.organization && (
+                            <span className="text-[#64748b] text-xs font-medium">
+                              ({act.organization})
+                            </span>
+                          )}
+                          <ConfidenceBadge confidence={act.confidence} />
+                          {act.source?.section && (
+                            <span className="text-[10px] text-[#6e56cf] bg-[#f3f0ff] px-2 py-0.5 rounded-full font-medium border border-[#e4daf7]">
+                              Source: {act.source.section}
+                            </span>
+                          )}
+                        </div>
+                        {(act.startDate || act.endDate) && (
+                          <span className="text-xs font-medium text-[#64748b] block mt-0.5">
+                            {act.startDate || ""} – {act.endDate || "Present"}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveExtracurricularToProject(idx)}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-[#6e56cf] bg-[#f3f0ff] hover:bg-[#e8e2fb] transition-colors cursor-pointer mr-1"
+                          title="Move this item to Projects"
+                        >
+                          Move to Projects
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditExtracurricular(idx)}
+                          className="p-1.5 rounded-lg text-[#64748b] hover:text-[#6e56cf] hover:bg-[#f3f0ff] transition-colors cursor-pointer"
+                          title="Edit activity"
+                        >
+                          <PencilIcon className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteExtracurricular(idx)}
+                          className="p-1.5 rounded-lg text-[#64748b] hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Delete activity"
+                        >
+                          <Trash2Icon className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {act.description && (
+                      <p className="text-xs text-[#475569] leading-relaxed mt-2 whitespace-pre-line border-t border-[#f0ecf9] pt-2">
+                        {act.description}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 rounded-2xl border border-dashed border-[#dcd3f8] text-center text-xs text-[#94a3b8]">
+                No extracurricular activities recorded. Click &quot;Add Activity&quot; to include clubs, sports, or societies.
               </div>
             )}
           </div>
@@ -2388,6 +2667,159 @@ export default function CvParsedPreview({
                 className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-sm shadow-[#6e56cf]/25 disabled:opacity-50"
               >
                 Save Entry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* G. Extracurricular Edit / Add Modal */}
+      {extracurricularModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl border border-[#eae6f5] shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="p-5 border-b border-[#eae6f5] flex items-center justify-between bg-[#faf9fd]">
+              <h3 className="text-base font-bold text-[#0f172a]">
+                {editingExtracurricularIndex !== null
+                  ? "Edit Extracurricular Activity"
+                  : "Add Extracurricular Activity"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setExtracurricularModalOpen(false)}
+                className="p-1.5 rounded-lg text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1edf9]"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-[#0f172a] block mb-1">
+                  Activity Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. University Cricket Team, IEEE Student Branch"
+                  value={extracurricularForm.activity}
+                  onChange={(e) =>
+                    setExtracurricularForm({
+                      ...extracurricularForm,
+                      activity: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl border border-[#eae6f5] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#6e56cf]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-[#0f172a] block mb-1">
+                    Role / Position
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Vice Captain, Active Member"
+                    value={extracurricularForm.role || ""}
+                    onChange={(e) =>
+                      setExtracurricularForm({
+                        ...extracurricularForm,
+                        role: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-[#eae6f5] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#6e56cf]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-[#0f172a] block mb-1">
+                    Organization / Club
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. University Sports Council"
+                    value={extracurricularForm.organization || ""}
+                    onChange={(e) =>
+                      setExtracurricularForm({
+                        ...extracurricularForm,
+                        organization: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-[#eae6f5] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#6e56cf]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-[#0f172a] block mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 2022"
+                    value={extracurricularForm.startDate || ""}
+                    onChange={(e) =>
+                      setExtracurricularForm({
+                        ...extracurricularForm,
+                        startDate: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-[#eae6f5] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#6e56cf]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-[#0f172a] block mb-1">
+                    End Date
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 2024 or Present"
+                    value={extracurricularForm.endDate || ""}
+                    onChange={(e) =>
+                      setExtracurricularForm({
+                        ...extracurricularForm,
+                        endDate: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-[#eae6f5] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#6e56cf]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-[#0f172a] block mb-1">
+                  Description
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Details of the activity, event organizing, competitions..."
+                  value={extracurricularForm.description || ""}
+                  onChange={(e) =>
+                    setExtracurricularForm({
+                      ...extracurricularForm,
+                      description: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl border border-[#eae6f5] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#6e56cf]"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-[#eae6f5] bg-[#faf9fd] flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setExtracurricularModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#64748b] hover:text-[#0f172a] hover:bg-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveExtracurricular}
+                disabled={!extracurricularForm.activity.trim()}
+                className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-sm shadow-[#6e56cf]/25 disabled:opacity-50"
+              >
+                Save Activity
               </button>
             </div>
           </div>

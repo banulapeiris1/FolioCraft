@@ -48,9 +48,9 @@ test("CV-04: PDF Text Extraction Service Unit Tests", async (t) => {
     assert.equal(result.totalPages, 3);
     assert.equal(result.pages.length, 3);
     assert.equal(result.hasText, true);
-    assert.match(result.pages[0], /Page 1: Overview and Summary/);
-    assert.match(result.pages[1], /Page 2: Work Experience and Projects/);
-    assert.match(result.pages[2], /Page 3: Education and Skills/);
+    assert.match(result.pages[0] || "", /Page 1: Overview and Summary/);
+    assert.match(result.pages[1] || "", /Page 2: Work Experience and Projects/);
+    assert.match(result.pages[2] || "", /Page 3: Education and Skills/);
     assert.match(result.text, /Page 1: Overview and Summary[\s\S]*Page 2: Work Experience and Projects[\s\S]*Page 3: Education and Skills/);
   });
 

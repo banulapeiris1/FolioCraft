@@ -10,11 +10,16 @@ import type {
   StructuredCvData,
   StructuredCvEducation,
   StructuredCvExperience,
+  StructuredCvExtracurricular,
   StructuredCvLeadership,
   StructuredCvPersonal,
   StructuredCvProject,
   StructuredCvSkill,
 } from "../types/cv.types";
+import {
+  matchKnownSection,
+  matchUnknownSectionHeading,
+} from "./sectionDetection.service";
 import { classifySkills } from "./skillClassification.service";
 
 export type {
@@ -22,6 +27,7 @@ export type {
   StructuredCvData,
   StructuredCvEducation,
   StructuredCvExperience,
+  StructuredCvExtracurricular,
   StructuredCvLeadership,
   StructuredCvPersonal,
   StructuredCvProject,
@@ -612,6 +618,9 @@ function isLikelyProjectTitle(line: string): boolean {
     )
   )
     return false;
+  if (matchKnownSection(trimmed) || matchUnknownSectionHeading(trimmed)) {
+    return false;
+  }
   return true;
 }
 
@@ -645,6 +654,17 @@ export function extractProjects(projectsText?: string): StructuredCvProject[] {
 
   for (let i = 0; i < rawLines.length; i++) {
     const line = rawLines[i]!;
+
+    // Stop if an alien canonical section or unknown heading is encountered
+    const sectionMatch = matchKnownSection(line);
+    if (sectionMatch && sectionMatch !== "projects") {
+      break;
+    }
+    const unknownHeading = matchUnknownSectionHeading(line);
+    if (unknownHeading && !/^projects?/i.test(unknownHeading)) {
+      break;
+    }
+
     const isTitle = isLikelyProjectTitle(line);
 
     if (
@@ -969,6 +989,217 @@ export function extractLeadership(
 }
 
 /**
+ * Extracts structured extracurricular entries from the extracurricular section.
+ * Supports:
+ * - Bulleted activity items (e.g. "- University Cricket Team", "- IEEE Member")
+ * - Key-value activity descriptions (e.g. "Club / Society - Role")
+ * - Dated activity blocks (e.g. "Event Organizer | TechFest 2024")
+ */
+export function extractExtracurricular(
+  extracurricularText?: string
+): StructuredCvExtracurricular[] {
+  if (!extracurricularText || !extracurricularText.trim()) return [];
+
+  const rawBlocks = extracurricularText
+    .split(/\n\s*\n/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  const activities: StructuredCvExtracurricular[] = [];
+
+  for (const block of rawBlocks) {
+    const lines = block
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    if (lines.length === 0) continue;
+
+    // Check if every line is a bullet item
+    const bulletLines = lines.filter((l) => /^[-*•]/.test(l));
+
+    if (bulletLines.length > 0 && bulletLines.length === lines.length) {
+      for (const line of lines) {
+        const cleaned = line.replace(/^[-*•]\s*/, "").trim();
+        if (!cleaned) continue;
+
+        let startDate: string | undefined;
+        let endDate: string | undefined;
+        let textWithoutDate = cleaned;
+
+        const dateMatch = cleaned.match(DATE_RANGE_REGEX);
+        if (dateMatch && dateMatch.groups) {
+          startDate = dateMatch.groups["startDate"]?.trim();
+          endDate = dateMatch.groups["endDate"]?.trim();
+          textWithoutDate = cleaned
+            .replace(DATE_RANGE_REGEX, "")
+            .replace(/[()]/g, "")
+            .trim();
+        }
+
+        let activity = textWithoutDate;
+        let role: string | undefined;
+        let organization: string | undefined;
+
+        for (const sep of [" - ", " – ", " | ", " : ", ": ", " at "]) {
+          if (textWithoutDate.includes(sep)) {
+            const parts = textWithoutDate.split(sep).map((p) => p.trim());
+            activity = parts[0] || textWithoutDate;
+            if (parts.length > 1) {
+              const p2 = parts[1] || "";
+              if (
+                /^(?:member|president|vice president|captain|vice captain|secretary|treasurer|lead|organizer|volunteer|coordinator|head|player)\b/i.test(
+                  p2
+                )
+              ) {
+                role = p2;
+                organization = parts[0];
+              } else {
+                role = p2;
+              }
+            }
+            break;
+          }
+        }
+
+        activities.push({
+          activity: activity || cleaned,
+          role,
+          organization,
+          startDate,
+          endDate,
+          confidence: activity ? "high" : "low",
+        });
+      }
+      continue;
+    }
+
+    // Multi-line block: Check if multiple un-bulleted activities are packed without blank lines
+    const lineGroups: string[][] = [];
+    if (rawBlocks.length > 1) {
+      lineGroups.push(lines);
+    } else {
+      let currentGroup: string[] = [];
+
+      const isRoleOrDateLine = (l: string): boolean => {
+        const cleaned = l.replace(DATE_RANGE_REGEX, "").replace(/[()]/g, "").trim();
+        return (
+          /^(?:member|active member|board member|president|vice president|vice chair|vice captain|captain|secretary|treasurer|lead|director|organizer|volunteer|coordinator|head|player)\b/i.test(
+            cleaned
+          ) || cleaned.length === 0
+        );
+      };
+
+      for (const l of lines) {
+        const isBullet = /^[-*•]/.test(l);
+        const isRoleOrDate = isRoleOrDateLine(l);
+        const isActionOrDesc =
+          /^(?:conducted|managed|assisted|played|organized|led|developed|created|built|participated|contributed|helped|designed|spearheaded|served)\b/i.test(
+            l
+          ) || l.endsWith(".");
+        const isNewActivityTitle =
+          !isBullet &&
+          !isRoleOrDate &&
+          !isActionOrDesc &&
+          l.length >= 3 &&
+          l.length <= 70 &&
+          currentGroup.length >= 2;
+
+        if (isNewActivityTitle) {
+          lineGroups.push(currentGroup);
+          currentGroup = [l];
+        } else {
+          currentGroup.push(l);
+        }
+      }
+      if (currentGroup.length > 0) {
+        lineGroups.push(currentGroup);
+      }
+    }
+
+    for (const groupLines of lineGroups) {
+      let startDate: string | undefined;
+      let endDate: string | undefined;
+      let dateLineIdx = -1;
+
+      for (let i = 0; i < groupLines.length; i++) {
+        const m = groupLines[i]!.match(DATE_RANGE_REGEX);
+        if (m && m.groups) {
+          startDate = m.groups["startDate"]?.trim();
+          const rawEnd = m.groups["endDate"]?.trim();
+          endDate =
+            rawEnd && /^(?:present|current|ongoing|now)$/i.test(rawEnd)
+              ? undefined
+              : rawEnd;
+          dateLineIdx = i;
+          break;
+        }
+      }
+
+      const headerLines: string[] = [];
+      const descLines: string[] = [];
+
+      for (let i = 0; i < groupLines.length; i++) {
+        if (i === dateLineIdx) {
+          const withoutDate = groupLines[i]!
+            .replace(DATE_RANGE_REGEX, "")
+            .replace(/[()]/g, "")
+            .trim();
+          if (withoutDate) {
+            headerLines.push(withoutDate);
+          }
+          continue;
+        }
+        if (/^[-*•]/.test(groupLines[i]!)) {
+          descLines.push(groupLines[i]!.replace(/^[-*•]\s*/, "").trim());
+        } else if (headerLines.length < 2 && descLines.length === 0) {
+          headerLines.push(groupLines[i]!);
+        } else {
+          descLines.push(groupLines[i]!);
+        }
+      }
+
+      let activity = headerLines[0]
+        ? headerLines[0].replace(/^[-*•]\s*/, "").trim()
+        : groupLines[0]!.replace(/^[-*•]\s*/, "").trim();
+      let role: string | undefined;
+      let organization: string | undefined;
+
+      if (headerLines.length > 1) {
+        role = headerLines[1]!.replace(/^[-*•]\s*/, "").trim();
+      } else {
+        for (const sep of [" - ", " – ", " | ", " : ", ": ", " at "]) {
+          if (activity.includes(sep)) {
+            const parts = activity.split(sep).map((p) => p.trim());
+            activity = parts[0] || activity;
+            role = parts[1];
+            break;
+          }
+        }
+      }
+
+      activities.push({
+        activity,
+        role,
+        organization,
+        startDate,
+        endDate,
+        description: descLines.length > 0 ? descLines.join("\n") : undefined,
+        confidence: activity ? "high" : "low",
+      });
+    }
+  }
+
+  return activities;
+}
+
+const EXTRACURRICULAR_ACTIVITY_SIGNALS =
+  /\b(?:cricket|football|soccer|basketball|badminton|tennis|swimming|athletics|sports|ieee\b|acm\b|rotaract|toastmasters|student\s+branch|student\s+council|student\s+union|event\s+organizer|organizing\s+committee|volunteer|volunteering|scouts|cadet|choir|orchestra|drama|dance|alumni\s+association)\b/i;
+
+const PROJECT_TECH_OR_BUILD_SIGNALS =
+  /\b(?:developed|built|created|implemented|architected|designed\s+and\s+developed|software|application|platform|website|system|api|database|model|pipeline|full-?stack|backend|frontend|react|node|python|java|c\+\+|flutter|docker|aws)\b/i;
+
+/**
  * Main structured CV extraction pipeline.
  * Transforms detected CV sections into structured, classified CV entities.
  */
@@ -992,9 +1223,59 @@ export function extractStructuredCv(
   const education = extractEducation(sections.education);
   const rawSkills = extractSkills(sections.skills);
   const { flatSkills, categorizedSkills } = classifySkills(rawSkills);
-  const projects = extractProjects(sections.projects);
+  const rawProjects = extractProjects(sections.projects);
   const achievements = extractAchievements(sections.achievements);
   const leadership = extractLeadership(sections.leadership);
+  const extracurricular = extractExtracurricular(sections.extracurricular);
+
+  // Check unknown sections for extracurricular if not already detected
+  if (extracurricular.length === 0 && sections.unknownSections) {
+    for (const [title, text] of Object.entries(sections.unknownSections)) {
+      if (/^(?:extra-?curricular|activities|societies|clubs)/i.test(title)) {
+        const extraFromUnknown = extractExtracurricular(text);
+        if (extraFromUnknown.length > 0) {
+          extracurricular.push(...extraFromUnknown);
+        }
+      }
+    }
+  }
+
+  // Filter out any entries mistakenly inside projects that have strong extracurricular signals
+  // and zero technical project signals.
+  const projects: StructuredCvProject[] = [];
+  for (const p of rawProjects) {
+    const hasProjectEvidence =
+      Boolean(p.githubUrl) ||
+      Boolean(p.liveUrl) ||
+      (p.technologies && p.technologies.length > 0) ||
+      (p.description && PROJECT_TECH_OR_BUILD_SIGNALS.test(p.description));
+
+    const isStrongExtracurricular =
+      EXTRACURRICULAR_ACTIVITY_SIGNALS.test(p.title) &&
+      (!p.description || !PROJECT_TECH_OR_BUILD_SIGNALS.test(p.description));
+
+    if (!hasProjectEvidence && isStrongExtracurricular) {
+      extracurricular.push({
+        activity: p.title,
+        description: p.description,
+        confidence: "medium",
+        source: {
+          section: "Projects (reclassified to Extracurricular)",
+          text: p.title,
+          classifier: "deterministic",
+          confidence: "medium",
+        },
+      });
+      reviewIssues.push({
+        field: "projects",
+        section: "projects",
+        message: `"${p.title}" was classified as an Extracurricular Activity instead of a Project.`,
+        severity: "info",
+      });
+    } else {
+      projects.push(p);
+    }
+  }
 
   // Generate Review Issues for meaningful ambiguities
   for (const exp of experience) {
@@ -1048,14 +1329,16 @@ export function extractStructuredCv(
     reviewIssues.push({
       field: "experience",
       section: "experience",
-      message: "No work experience section was detected in the CV. Please review if this is intentional.",
+      message:
+        "No work experience section was detected in the CV. Please review if this is intentional.",
       severity: "warning",
     });
   }
 
   if (
     flatSkills.length === 0 &&
-    (!sections.details?.skills || sections.details.skills.status === "not_detected")
+    (!sections.details?.skills ||
+      sections.details.skills.status === "not_detected")
   ) {
     reviewIssues.push({
       field: "skills",
@@ -1074,6 +1357,9 @@ export function extractStructuredCv(
     categorizedSkills,
     achievements: achievements.length > 0 ? achievements : undefined,
     leadership: leadership.length > 0 ? leadership : undefined,
+    extracurricular: extracurricular.length > 0 ? extracurricular : undefined,
+    extracurricularActivities:
+      extracurricular.length > 0 ? extracurricular : undefined,
     reviewIssues: reviewIssues.length > 0 ? reviewIssues : undefined,
     sectionStatuses,
     rawText: sections.rawText,

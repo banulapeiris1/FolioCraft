@@ -432,8 +432,8 @@ test("PORTFOLIO-04: Read Portfolios HTTP API Suite (GET /api/portfolios & GET /a
     const bodyB = (await resB.json()) as { success: boolean; portfolios: Portfolio[] };
     assert.equal(bodyB.success, true);
     assert.equal(bodyB.portfolios.length, 1);
-    assert.equal(bodyB.portfolios[0].id, portfolioB1Id);
-    assert.equal(bodyB.portfolios[0].userId, userBId);
+    assert.equal(bodyB.portfolios[0]?.id, portfolioB1Id);
+    assert.equal(bodyB.portfolios[0]?.userId, userBId);
 
     // Verify User A portfolios are ordered by updated_at DESC
     const resA = await fetch(`${baseUrl}/api/portfolios`, {
@@ -446,8 +446,8 @@ test("PORTFOLIO-04: Read Portfolios HTTP API Suite (GET /api/portfolios & GET /a
     const bodyA = (await resA.json()) as { success: boolean; portfolios: Portfolio[] };
     assert.equal(bodyA.success, true);
     assert.equal(bodyA.portfolios.length, 2);
-    const time0 = new Date(bodyA.portfolios[0].updatedAt).getTime();
-    const time1 = new Date(bodyA.portfolios[1].updatedAt).getTime();
+    const time0 = new Date(bodyA.portfolios[0]?.updatedAt || 0).getTime();
+    const time1 = new Date(bodyA.portfolios[1]?.updatedAt || 0).getTime();
     assert.ok(time0 >= time1, "Portfolios must be ordered by updated_at DESC");
   });
 

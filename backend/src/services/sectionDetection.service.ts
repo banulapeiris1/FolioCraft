@@ -27,6 +27,7 @@ export const ALL_CANONICAL_SECTIONS: CvSectionType[] = [
   "projects",
   "achievements",
   "leadership",
+  "extracurricular",
 ];
 
 /**
@@ -99,6 +100,13 @@ const SECTION_PATTERNS: Record<CvSectionType, RegExp[]> = {
     /^community\s+leadership$/i,
     /^leadership$/i,
   ],
+  extracurricular: [
+    /^(?:extra-?curricular\s+activities|extra-?curriculars?|activities\s+(?:&|and)\s+societies|clubs?\s+(?:&|and)\s+societies)$/i,
+    /^(?:extracurricular|extra-curricular)(?:\s+involvement)?$/i,
+    /^(?:campus|university|student)\s+(?:activities|involvement)$/i,
+    /^co-?curricular(?:\s+activities)?$/i,
+    /^activities$/i,
+  ],
 };
 
 /**
@@ -112,9 +120,6 @@ const KNOWN_NON_CORE_PATTERNS: RegExp[] = [
   /^(?:publications?|research(?:\s+papers?)?)$/i,
   /^(?:languages?|language\s+proficiency)$/i,
   /^(?:volunteer(?:ing)?|community\s+service|volunteer\s+experience)$/i,
-  /^(?:extracurricular|extra-curricular)(?:\s+activities)?$/i,
-  /^(?:activities\s+(?:&|and)\s+societies)$/i,
-  /^(?:clubs?\s+(?:&|and)\s+societies)$/i,
   /^(?:interests?|hobbies?)$/i,
   /^(?:references?|referees?)$/i,
   /^(?:patents?|intellectual\s+property)$/i,
@@ -257,6 +262,7 @@ export function createDefaultDetails(): Record<CvSectionType, SectionDetail> {
     projects: { status: "not_detected", confidence: "low", text: "" },
     achievements: { status: "not_detected", confidence: "low", text: "" },
     leadership: { status: "not_detected", confidence: "low", text: "" },
+    extracurricular: { status: "not_detected", confidence: "low", text: "" },
   };
 }
 
