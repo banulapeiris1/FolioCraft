@@ -3,6 +3,7 @@ import { AppError } from "../utils/errors";
 import { extractTextFromPdf } from "./pdfExtraction.service";
 import { detectCvSections } from "./sectionDetection.service";
 import { extractStructuredCv } from "./structuredExtraction.service";
+import { executeHybridCvPipeline } from "./cv/cvPipeline.service";
 import type { CvUpload, CvUploadStatus } from "../types/cv.types";
 
 const UUID_REGEX =
@@ -72,13 +73,11 @@ export function mapCvUploadRowToEntity(row: CvUploadDbRow): CvUpload {
 
 export class CvUploadService {
   /**
-   * Processes a validated CV upload through the extraction pipeline:
+   * Processes a validated CV upload through the hybrid extraction pipeline:
    * 1. Verifies user identity & optional portfolio ownership
    * 2. Inserts initial cv_uploads record with 'PROCESSING' status
-   * 3. Extracts raw text via CV-04 extractTextFromPdf()
-   * 4. Detects CV sections via CV-05 detectCvSections()
-   * 5. Performs structured extraction via CV-06 extractStructuredCv()
-   * 6. Updates database record to 'COMPLETED' (or 'FAILED' on error)
+   * 3. Executes hybrid pipeline (Text + Layout + Deterministic + Gemini AI + Reconciliation)
+   * 4. Updates database record to 'COMPLETED' (or 'FAILED' on error)
    */
   async processCvUpload(input: ProcessCvUploadInput): Promise<CvUpload> {
     const { userId, file } = input;
@@ -139,16 +138,9 @@ export class CvUploadService {
 
     // 2. Execute extraction pipeline
     try {
-      // Step A: CV-04 PDF text extraction (in-memory Buffer)
-      const extraction = await extractTextFromPdf(file.buffer);
+      const pipelineResult = await executeHybridCvPipeline(file.buffer);
 
-      // Step B: CV-05 Section detection (plain text input)
-      const sections = detectCvSections(extraction.text);
-
-      // Step C: CV-06 Structured entity extraction
-      const structuredData = extractStructuredCv(sections);
-
-      // Step D: Update database record to COMPLETED with raw text and structured JSON
+      // Update database record to COMPLETED with raw text and structured JSON
       const updateRes = await pool.query<CvUploadDbRow>(
         `UPDATE cv_uploads
          SET status = 'COMPLETED',
@@ -157,7 +149,11 @@ export class CvUploadService {
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $3
          RETURNING id, user_id, portfolio_id, file_name, file_size, mime_type, status, raw_text, parsed_data, error_message, created_at, updated_at`,
-        [extraction.text, JSON.stringify(structuredData), recordId]
+        [
+          pipelineResult.rawText,
+          JSON.stringify(pipelineResult.structuredData),
+          recordId,
+        ]
       );
 
       return mapCvUploadRowToEntity(updateRes.rows[0]!);

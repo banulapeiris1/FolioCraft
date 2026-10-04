@@ -8,8 +8,45 @@ export type CvUploadStatus =
   | "COMPLETED"
   | "FAILED";
 
+export type Confidence = "high" | "medium" | "low";
+
+export type CvSectionType =
+  | "header"
+  | "summary"
+  | "experience"
+  | "education"
+  | "skills"
+  | "projects"
+  | "extracurricular"
+  | "certifications"
+  | "achievements"
+  | "leadership"
+  | "languages"
+  | "interests"
+  | "other";
+
+export type SectionStatus = "detected" | "empty" | "ambiguous" | "missing";
+
+export interface EntitySource {
+  page?: number;
+  section?: string;
+  text?: string;
+  classifier?: string;
+  confidence?: Confidence;
+}
+
+export interface ReviewIssue {
+  field: string;
+  section: string;
+  message: string;
+  severity: "info" | "warning" | "error";
+  value?: string;
+}
+
 export interface StructuredCvPersonal {
   fullName?: string;
+  professionalTitle?: string;
+  title?: string;
   email?: string;
   phone?: string;
   location?: string;
@@ -26,6 +63,9 @@ export interface StructuredCvExperience {
   startDate?: string;
   endDate?: string;
   isCurrent: boolean;
+  technologies?: string[];
+  confidence?: Confidence;
+  source?: EntitySource;
 }
 
 export interface StructuredCvEducation {
@@ -35,16 +75,64 @@ export interface StructuredCvEducation {
   description?: string;
   startDate?: string;
   endDate?: string;
+  confidence?: Confidence;
+  source?: EntitySource;
 }
 
 export interface StructuredCvSkill {
   name: string;
+  category?: string;
+  confidence?: Confidence;
 }
 
 export interface StructuredCvProject {
   title: string;
   description?: string;
   technologies: string[];
+  githubUrl?: string;
+  liveUrl?: string;
+  confidence?: Confidence;
+  source?: EntitySource;
+}
+
+export interface StructuredCvAchievement {
+  title: string;
+  description?: string;
+  date?: string;
+  issuer?: string;
+  confidence?: Confidence;
+  source?: EntitySource;
+}
+
+export interface StructuredCvLeadership {
+  role: string;
+  organization?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  confidence?: Confidence;
+  source?: EntitySource;
+}
+
+export interface StructuredCvExtracurricular {
+  activity: string;
+  role?: string;
+  organization?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  confidence?: Confidence;
+  source?: EntitySource;
+}
+
+export interface CategorizedSkills {
+  languages: StructuredCvSkill[];
+  frontend: StructuredCvSkill[];
+  backend: StructuredCvSkill[];
+  databases: StructuredCvSkill[];
+  tools: StructuredCvSkill[];
+  softSkills: StructuredCvSkill[];
+  other: StructuredCvSkill[];
 }
 
 export interface StructuredCvData {
@@ -53,6 +141,17 @@ export interface StructuredCvData {
   education: StructuredCvEducation[];
   skills: StructuredCvSkill[];
   projects: StructuredCvProject[];
+  categorizedSkills?: CategorizedSkills;
+  achievements?: StructuredCvAchievement[];
+  leadership?: StructuredCvLeadership[];
+  extracurricular?: StructuredCvExtracurricular[];
+  extracurricularActivities?: StructuredCvExtracurricular[];
+  reviewIssues?: ReviewIssue[];
+  sectionStatuses?: Partial<Record<CvSectionType, SectionStatus>>;
+  rawText?: string;
+  totalPages?: number;
+  pageTexts?: string[];
+  parsingMetadata?: Record<string, unknown>;
 }
 
 export interface CvUploadEntity {
