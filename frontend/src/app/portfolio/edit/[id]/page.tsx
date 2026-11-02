@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, use } from "react";
+import React, { useEffect, useState, use, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -18,8 +18,25 @@ import {
   SparklesIcon,
   FileTextIcon,
 } from "@/components/portfolio/PortfolioIcons";
-import { getPortfolio, updatePortfolio, ApiError } from "@/lib/api";
+import {
+  getPortfolio,
+  updatePortfolio,
+  getProjects,
+  getSkills,
+  getExperiences,
+  ApiError,
+} from "@/lib/api";
 import { Portfolio, PortfolioFormData } from "@/types/portfolio";
+import { Project } from "@/types/project";
+import { Skill } from "@/types/skill";
+import { Experience } from "@/types/experience";
+import { PortfolioViewData, mapDraftToPortfolioViewData } from "@/templates/types";
+import {
+  EyeIcon,
+  ColumnsIcon,
+  PencilIcon,
+} from "@/components/portfolio/PortfolioIcons";
+import { PreviewShell } from "@/components/portfolio/PreviewShell";
 
 export default function EditPortfolioPage({
   params,
@@ -33,7 +50,13 @@ export default function EditPortfolioPage({
   const { user, token, isLoading, isAuthenticated, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState<"profile" | "projects" | "skills" | "experience" | "cv">("profile");
+  const [layoutMode, setLayoutMode] = useState<"split" | "editor" | "preview">("split");
+  const [mobileActiveView, setMobileActiveView] = useState<"editor" | "preview">("editor");
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [currentDraft, setCurrentDraft] = useState<PortfolioFormData | null>(null);
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -74,9 +97,35 @@ export default function EditPortfolioPage({
       setFetchError(null);
 
       try {
-        const response = await getPortfolio(portfolioId, token);
+        const [portfolioRes, projectsRes, skillsRes, experiencesRes] = await Promise.all([
+          getPortfolio(portfolioId, token),
+          getProjects(portfolioId, token).catch(() => ({ projects: [] })),
+          getSkills(portfolioId, token).catch(() => ({ skills: [] })),
+          getExperiences(portfolioId, token).catch(() => ({ experience: [], experiences: [] })),
+        ]);
         if (isMounted) {
-          setPortfolio(response.portfolio);
+          const loadedPort = portfolioRes.portfolio;
+          setPortfolio(loadedPort);
+          setProjects(projectsRes.projects || []);
+          setSkills(skillsRes.skills || []);
+          const exps = ("experiences" in experiencesRes && Array.isArray(experiencesRes.experiences))
+            ? experiencesRes.experiences
+            : ("experience" in experiencesRes && Array.isArray(experiencesRes.experience))
+            ? experiencesRes.experience
+            : [];
+          setExperiences(exps);
+          setCurrentDraft({
+            name: loadedPort.name,
+            title: loadedPort.title,
+            about: loadedPort.about || "",
+            email: loadedPort.email || "",
+            phone: loadedPort.phone || "",
+            location: loadedPort.location || "",
+            profileImageUrl: loadedPort.profileImageUrl || "",
+            socialLinks: loadedPort.socialLinks || {},
+            username: loadedPort.username,
+            template: loadedPort.template || "modern",
+          });
         }
       } catch (err) {
         if (isMounted) {
@@ -106,6 +155,35 @@ export default function EditPortfolioPage({
       isMounted = false;
     };
   }, [portfolioId, token, router]);
+
+  const initialData: Partial<PortfolioFormData> = useMemo(() => {
+    return portfolio
+      ? {
+          name: portfolio.name,
+          title: portfolio.title,
+          about: portfolio.about || "",
+          email: portfolio.email || "",
+          phone: portfolio.phone || "",
+          location: portfolio.location || "",
+          profileImageUrl: portfolio.profileImageUrl || "",
+          socialLinks: portfolio.socialLinks || {},
+          username: portfolio.username,
+          template: portfolio.template || "modern",
+        }
+      : {};
+  }, [portfolio]);
+
+  const handleDraftChange = useCallback((draft: PortfolioFormData) => {
+    setCurrentDraft(draft);
+  }, []);
+
+  const liveViewData: PortfolioViewData = useMemo(() => {
+    return mapDraftToPortfolioViewData(currentDraft || initialData, {
+      projects,
+      skills,
+      experiences,
+    });
+  }, [currentDraft, initialData, projects, skills, experiences]);
 
   if (isLoading || !isAuthenticated || !user) {
     return (
@@ -145,6 +223,18 @@ export default function EditPortfolioPage({
     try {
       const response = await updatePortfolio(portfolioId, formData, token);
       setPortfolio(response.portfolio);
+      setCurrentDraft({
+        name: response.portfolio.name,
+        title: response.portfolio.title,
+        about: response.portfolio.about || "",
+        email: response.portfolio.email || "",
+        phone: response.portfolio.phone || "",
+        location: response.portfolio.location || "",
+        profileImageUrl: response.portfolio.profileImageUrl || "",
+        socialLinks: response.portfolio.socialLinks || {},
+        username: response.portfolio.username,
+        template: response.portfolio.template || "modern",
+      });
       setSuccessFeedback("Changes saved successfully!");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
@@ -176,26 +266,246 @@ export default function EditPortfolioPage({
     }
   };
 
-  const initialData: Partial<PortfolioFormData> = portfolio
-    ? {
-        name: portfolio.name,
-        title: portfolio.title,
-        about: portfolio.about || "",
-        email: portfolio.email || "",
-        phone: portfolio.phone || "",
-        location: portfolio.location || "",
-        profileImageUrl: portfolio.profileImageUrl || "",
-        socialLinks: portfolio.socialLinks || {},
-        username: portfolio.username,
-        template: portfolio.template || "modern",
-      }
-    : {};
+  const renderEditorContent = () => (
+    <>
+      {/* Page Header */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f3f0ff] border border-[#dcd3f8] text-xs font-semibold text-[#6e56cf] uppercase tracking-wider mb-3">
+            {activeTab === "profile" ? (
+              <>
+                <BriefcaseIcon className="w-3.5 h-3.5" />
+                <span>Portfolio Settings</span>
+              </>
+            ) : activeTab === "projects" ? (
+              <>
+                <FolderGit2Icon className="w-3.5 h-3.5" />
+                <span>Project Management</span>
+              </>
+            ) : activeTab === "skills" ? (
+              <>
+                <SparklesIcon className="w-3.5 h-3.5" />
+                <span>Skills Management</span>
+              </>
+            ) : activeTab === "experience" ? (
+              <>
+                <BriefcaseIcon className="w-3.5 h-3.5" />
+                <span>Experience Management</span>
+              </>
+            ) : (
+              <>
+                <FileTextIcon className="w-3.5 h-3.5" />
+                <span>CV Import &amp; Parsing</span>
+              </>
+            )}
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a]">
+            {activeTab === "profile"
+              ? "Edit Portfolio Information"
+              : activeTab === "projects"
+              ? "Manage Projects"
+              : activeTab === "skills"
+              ? "Manage Skills"
+              : activeTab === "experience"
+              ? "Manage Work Experience"
+              : "Import from CV"}
+          </h1>
+          <p className="mt-1.5 text-sm text-[#64748b] max-w-2xl">
+            {activeTab === "profile"
+              ? "Modify your personal profile, contact channels, public handle, and template theme."
+              : activeTab === "projects"
+              ? "Showcase your best engineering work, web apps, and open-source contributions."
+              : activeTab === "skills"
+              ? "Highlight your technical proficiencies, frameworks, libraries, and tools."
+              : activeTab === "experience"
+              ? "Detail your employment history, career roles, and professional achievements."
+              : "Upload your CV in PDF format to parse and extract your profile info, experience, education, skills, and projects."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Link
+            href={`/portfolio/templates?id=${encodeURIComponent(portfolioId)}`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#6e56cf] bg-[#f3f0ff] hover:bg-[#eae4fc] border border-[#dcd3f8] transition-all hover:shadow-xs"
+          >
+            <SparklesIcon className="w-3.5 h-3.5" />
+            <span>Browse Templates</span>
+          </Link>
+          <div className="text-xs font-mono text-[#64748b] bg-white border border-[#eae6f5] px-3 py-1.5 rounded-xl">
+            ID: {portfolioId}
+          </div>
+        </div>
+      </div>
+
+      {/* Section Switcher Tabs */}
+      <div className="flex items-center gap-2 border-b border-[#eae6f5] pb-3 mb-6 overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => setActiveTab("profile")}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+            activeTab === "profile"
+              ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
+              : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
+          }`}
+        >
+          <BriefcaseIcon className="w-3.5 h-3.5" />
+          <span>Portfolio Profile</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("projects")}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+            activeTab === "projects"
+              ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
+              : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
+          }`}
+        >
+          <FolderGit2Icon className="w-3.5 h-3.5" />
+          <span>Projects</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("skills")}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+            activeTab === "skills"
+              ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
+              : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
+          }`}
+        >
+          <SparklesIcon className="w-3.5 h-3.5" />
+          <span>Skills</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("experience")}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+            activeTab === "experience"
+              ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
+              : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
+          }`}
+        >
+          <BriefcaseIcon className="w-3.5 h-3.5" />
+          <span>Experience</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("cv")}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+            activeTab === "cv"
+              ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
+              : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
+          }`}
+        >
+          <FileTextIcon className="w-3.5 h-3.5" />
+          <span>CV Import</span>
+        </button>
+      </div>
+
+      {/* Success Feedback Alert */}
+      {successFeedback && (
+        <div className="mb-6 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 animate-fadeIn flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <CheckCircleIcon className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            <p className="text-sm font-semibold text-emerald-900">
+              {successFeedback}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSuccessFeedback(null)}
+            className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Active Section Content */}
+      {activeTab === "profile" ? (
+        <PortfolioForm
+          mode="edit"
+          portfolioId={portfolioId}
+          initialData={currentDraft ?? initialData}
+          isSubmitting={isSubmitting}
+          serverError={serverError}
+          serverFieldErrors={serverFieldErrors}
+          onChange={handleDraftChange}
+          onSubmit={handleUpdate}
+          onCancel={() => router.push("/dashboard")}
+        />
+      ) : activeTab === "projects" ? (
+        <ProjectManager
+          portfolioId={portfolioId}
+          initialProjects={projects}
+          onProjectsChange={setProjects}
+        />
+      ) : activeTab === "skills" ? (
+        <SkillManager
+          portfolioId={portfolioId}
+          initialSkills={skills}
+          onSkillsChange={setSkills}
+        />
+      ) : activeTab === "experience" ? (
+        <ExperienceManager
+          portfolioId={portfolioId}
+          initialExperiences={experiences}
+          onExperiencesChange={setExperiences}
+        />
+      ) : (
+        <CvUploadManager
+          portfolioId={portfolioId}
+          portfolio={portfolio}
+          onProfileUpdated={(updated) => {
+            setPortfolio(updated);
+            setCurrentDraft({
+              name: updated.name,
+              title: updated.title,
+              about: updated.about || "",
+              email: updated.email || "",
+              phone: updated.phone || "",
+              location: updated.location || "",
+              profileImageUrl: updated.profileImageUrl || "",
+              socialLinks: updated.socialLinks || {},
+              username: updated.username,
+              template: updated.template || "modern",
+            });
+            setSuccessFeedback("CV profile data has been imported into your portfolio form. Review and save your changes.");
+          }}
+          onNavigateTab={(tab) => setActiveTab(tab)}
+        />
+      )}
+    </>
+  );
+
+  const renderPreviewContent = (className?: string) => (
+    <section
+      data-testid="live-preview-section"
+      className={`flex flex-col ${className || ""}`}
+      aria-label="Live Portfolio Preview"
+    >
+      <div data-testid="live-preview-container" className="flex-1">
+        <PreviewShell
+          data={liveViewData}
+          templateId={liveViewData.template}
+          portfolioId={portfolioId}
+          onTemplateChange={(selectedTpl) => {
+            handleDraftChange({
+              ...(currentDraft || initialData),
+              name: (currentDraft || initialData).name || "",
+              title: (currentDraft || initialData).title || "",
+              username: (currentDraft || initialData).username || "",
+              template: selectedTpl,
+            });
+          }}
+        />
+      </div>
+    </section>
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-[#faf9fd] selection:bg-[#f3f0ff] selection:text-[#6e56cf]">
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 w-full bg-white/85 backdrop-blur-md border-b border-[#eae6f5]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/dashboard"
@@ -220,6 +530,56 @@ export default function EditPortfolioPage({
             </span>
           </div>
 
+          {/* Layout View Mode Controls (Desktop / Tablet) */}
+          <div
+            role="group"
+            aria-label="Editor and preview layout"
+            className="hidden md:flex items-center bg-[#f8f7fd] p-1 rounded-xl border border-[#eae6f5]"
+          >
+            <button
+              type="button"
+              aria-label="Split view layout"
+              aria-pressed={layoutMode === "split"}
+              onClick={() => setLayoutMode("split")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                layoutMode === "split"
+                  ? "bg-white text-[#6e56cf] shadow-xs"
+                  : "text-[#64748b] hover:text-[#0f172a]"
+              }`}
+            >
+              <ColumnsIcon className="w-3.5 h-3.5" />
+              <span>Split</span>
+            </button>
+            <button
+              type="button"
+              aria-label="Editor only layout"
+              aria-pressed={layoutMode === "editor"}
+              onClick={() => setLayoutMode("editor")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                layoutMode === "editor"
+                  ? "bg-white text-[#6e56cf] shadow-xs"
+                  : "text-[#64748b] hover:text-[#0f172a]"
+              }`}
+            >
+              <PencilIcon className="w-3.5 h-3.5" />
+              <span>Editor</span>
+            </button>
+            <button
+              type="button"
+              aria-label="Preview only layout"
+              aria-pressed={layoutMode === "preview"}
+              onClick={() => setLayoutMode("preview")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                layoutMode === "preview"
+                  ? "bg-white text-[#6e56cf] shadow-xs"
+                  : "text-[#64748b] hover:text-[#0f172a]"
+              }`}
+            >
+              <EyeIcon className="w-3.5 h-3.5" />
+              <span>Preview</span>
+            </button>
+          </div>
+
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#f8f7fd] border border-[#eae6f5] text-xs">
               <span className="w-2 h-2 rounded-full bg-[#10b981]" />
@@ -237,7 +597,15 @@ export default function EditPortfolioPage({
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <main
+        className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 ${
+          layoutMode === "split"
+            ? "max-w-[1720px]"
+            : layoutMode === "preview"
+            ? "max-w-6xl"
+            : "max-w-4xl"
+        }`}
+      >
         {/* Loading State */}
         {isLoadingPortfolio ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-[#eae6f5] shadow-xs">
@@ -280,185 +648,60 @@ export default function EditPortfolioPage({
         ) : (
           /* Loaded Form Content */
           <>
-            {/* Page Header */}
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f3f0ff] border border-[#dcd3f8] text-xs font-semibold text-[#6e56cf] uppercase tracking-wider mb-3">
-                  {activeTab === "profile" ? (
-                    <>
-                      <BriefcaseIcon className="w-3.5 h-3.5" />
-                      <span>Portfolio Settings</span>
-                    </>
-                  ) : activeTab === "projects" ? (
-                    <>
-                      <FolderGit2Icon className="w-3.5 h-3.5" />
-                      <span>Project Management</span>
-                    </>
-                  ) : activeTab === "skills" ? (
-                    <>
-                      <SparklesIcon className="w-3.5 h-3.5" />
-                      <span>Skills Management</span>
-                    </>
-                  ) : activeTab === "experience" ? (
-                    <>
-                      <BriefcaseIcon className="w-3.5 h-3.5" />
-                      <span>Experience Management</span>
-                    </>
-                  ) : (
-                    <>
-                      <FileTextIcon className="w-3.5 h-3.5" />
-                      <span>CV Import & Parsing</span>
-                    </>
-                  )}
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0f172a]">
-                  {activeTab === "profile"
-                    ? "Edit Portfolio Information"
-                    : activeTab === "projects"
-                    ? "Manage Projects"
-                    : activeTab === "skills"
-                    ? "Manage Skills"
-                    : activeTab === "experience"
-                    ? "Manage Work Experience"
-                    : "Import from CV"}
-                </h1>
-                <p className="mt-1.5 text-sm text-[#64748b] max-w-2xl">
-                  {activeTab === "profile"
-                    ? "Modify your personal profile, contact channels, public handle, and template theme."
-                    : activeTab === "projects"
-                    ? "Showcase your best engineering work, web apps, and open-source contributions."
-                    : activeTab === "skills"
-                    ? "Highlight your technical proficiencies, frameworks, libraries, and tools."
-                    : activeTab === "experience"
-                    ? "Detail your employment history, career roles, and professional achievements."
-                    : "Upload your CV in PDF format to parse and extract your profile info, experience, education, skills, and projects."}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                <Link
-                  href={`/portfolio/templates?id=${encodeURIComponent(portfolioId)}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#6e56cf] bg-[#f3f0ff] hover:bg-[#eae4fc] border border-[#dcd3f8] transition-all hover:shadow-xs"
-                >
-                  <SparklesIcon className="w-3.5 h-3.5" />
-                  <span>Browse Templates</span>
-                </Link>
-                <div className="text-xs font-mono text-[#64748b] bg-white border border-[#eae6f5] px-3 py-1.5 rounded-xl">
-                  ID: {portfolioId}
-                </div>
-              </div>
-            </div>
-
-            {/* Section Switcher Tabs */}
-            <div className="flex items-center gap-2 border-b border-[#eae6f5] pb-3 mb-6">
+            {/* Mobile View Switcher (Visible on < lg screens) */}
+            <div className="flex lg:hidden items-center justify-center p-1 bg-[#f3f0ff] rounded-xl border border-[#dcd3f8] mb-6">
               <button
                 type="button"
-                onClick={() => setActiveTab("profile")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTab === "profile"
-                    ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
-                    : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
+                onClick={() => setMobileActiveView("editor")}
+                className={`flex-1 py-2 rounded-lg text-xs font-semibold text-center transition-all cursor-pointer ${
+                  mobileActiveView === "editor"
+                    ? "bg-white text-[#6e56cf] shadow-xs"
+                    : "text-[#64748b]"
                 }`}
               >
-                <BriefcaseIcon className="w-3.5 h-3.5" />
-                <span>Portfolio Profile</span>
+                Editor Form
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("projects")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTab === "projects"
-                    ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
-                    : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
+                onClick={() => setMobileActiveView("preview")}
+                className={`flex-1 py-2 rounded-lg text-xs font-semibold text-center transition-all cursor-pointer ${
+                  mobileActiveView === "preview"
+                    ? "bg-white text-[#6e56cf] shadow-xs"
+                    : "text-[#64748b]"
                 }`}
               >
-                <FolderGit2Icon className="w-3.5 h-3.5" />
-                <span>Projects</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("skills")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTab === "skills"
-                    ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
-                    : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
-                }`}
-              >
-                <SparklesIcon className="w-3.5 h-3.5" />
-                <span>Skills</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("experience")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTab === "experience"
-                    ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
-                    : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
-                }`}
-              >
-                <BriefcaseIcon className="w-3.5 h-3.5" />
-                <span>Experience</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("cv")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTab === "cv"
-                    ? "bg-[#6e56cf] text-white shadow-sm shadow-[#6e56cf]/25"
-                    : "bg-white text-[#64748b] hover:text-[#0f172a] border border-[#eae6f5] hover:bg-[#faf9fd]"
-                }`}
-              >
-                <FileTextIcon className="w-3.5 h-3.5" />
-                <span>CV Import</span>
+                Live Preview
               </button>
             </div>
 
-            {/* Success Feedback Alert */}
-            {successFeedback && (
-              <div className="mb-6 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 animate-fadeIn flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <CheckCircleIcon className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                  <p className="text-sm font-semibold text-emerald-900">
-                    {successFeedback}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSuccessFeedback(null)}
-                  className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 cursor-pointer"
+            {layoutMode === "split" ? (
+              <div className="flex flex-col lg:flex-row items-start gap-8">
+                {/* Left Panel: Editor */}
+                <div
+                  className={`w-full lg:w-[48%] xl:w-[45%] shrink-0 ${
+                    mobileActiveView === "preview" ? "hidden lg:block" : "block"
+                  }`}
                 >
-                  Dismiss
-                </button>
-              </div>
-            )}
+                  {renderEditorContent()}
+                </div>
 
-            {/* Active Section Content */}
-            {activeTab === "profile" ? (
-              <PortfolioForm
-                mode="edit"
-                portfolioId={portfolioId}
-                initialData={initialData}
-                isSubmitting={isSubmitting}
-                serverError={serverError}
-                serverFieldErrors={serverFieldErrors}
-                onSubmit={handleUpdate}
-                onCancel={() => router.push("/dashboard")}
-              />
-            ) : activeTab === "projects" ? (
-              <ProjectManager portfolioId={portfolioId} />
-            ) : activeTab === "skills" ? (
-              <SkillManager portfolioId={portfolioId} />
-            ) : activeTab === "experience" ? (
-              <ExperienceManager portfolioId={portfolioId} />
+                {/* Right Panel: Live Preview Shell */}
+                <div
+                  className={`w-full lg:w-[52%] xl:w-[55%] lg:sticky lg:top-20 ${
+                    mobileActiveView === "editor" ? "hidden lg:block" : "block"
+                  }`}
+                >
+                  {renderPreviewContent()}
+                </div>
+              </div>
+            ) : layoutMode === "editor" ? (
+              <div className="w-full">
+                {renderEditorContent()}
+              </div>
             ) : (
-              <CvUploadManager
-                portfolioId={portfolioId}
-                portfolio={portfolio}
-                onProfileUpdated={(updated) => {
-                  setPortfolio(updated);
-                  setSuccessFeedback("CV profile data has been imported into your portfolio form. Review and save your changes.");
-                }}
-                onNavigateTab={(tab) => setActiveTab(tab)}
-              />
+              <div className="w-full">
+                {renderPreviewContent("min-h-[750px]")}
+              </div>
             )}
           </>
         )}
@@ -466,3 +709,4 @@ export default function EditPortfolioPage({
     </div>
   );
 }
+

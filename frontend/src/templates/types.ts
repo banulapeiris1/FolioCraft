@@ -1,4 +1,4 @@
-import { PortfolioTemplateId, SocialLinks } from "@/types/portfolio";
+import { PortfolioFormData, PortfolioTemplateId, SocialLinks } from "@/types/portfolio";
 import { Project } from "@/types/project";
 import { Skill } from "@/types/skill";
 import { Experience } from "@/types/experience";
@@ -53,3 +53,47 @@ export interface TemplateMeta {
   description: string;
   badge?: string;
 }
+
+/**
+ * Collections input bundle for assembling PortfolioViewData.
+ */
+export interface PortfolioCollectionsInput {
+  projects?: Project[] | null;
+  skills?: Skill[] | null;
+  experiences?: Experience[] | null;
+}
+
+/**
+ * Synchronous pure mapping function converting raw editor form draft state
+ * and associated collections into presentation-ready PortfolioViewData.
+ *
+ * Guarantees:
+ * - Never returns undefined/null for collections arrays (projects, skills, experiences).
+ * - Safe handling of sparse or missing profile fields.
+ * - Does not include Education (omitted from current active portfolio model).
+ * - Decouples presentation view data from database entities and API state.
+ */
+export function mapDraftToPortfolioViewData(
+  draft?: Partial<PortfolioFormData> | null,
+  collections?: PortfolioCollectionsInput | null
+): PortfolioViewData {
+  const safeDraft = draft || {};
+  const safeCollections = collections || {};
+
+  return {
+    name: safeDraft.name ?? "",
+    title: safeDraft.title ?? "",
+    about: safeDraft.about || null,
+    email: safeDraft.email || null,
+    phone: safeDraft.phone || null,
+    location: safeDraft.location || null,
+    profileImageUrl: safeDraft.profileImageUrl || null,
+    socialLinks: safeDraft.socialLinks ? { ...safeDraft.socialLinks } : {},
+    username: safeDraft.username ?? "",
+    projects: Array.isArray(safeCollections.projects) ? safeCollections.projects : [],
+    skills: Array.isArray(safeCollections.skills) ? safeCollections.skills : [],
+    experiences: Array.isArray(safeCollections.experiences) ? safeCollections.experiences : [],
+    template: safeDraft.template || "modern",
+  };
+}
+

@@ -26,6 +26,7 @@ export interface PortfolioFormProps {
   isSubmitting?: boolean;
   serverError?: string | null;
   serverFieldErrors?: Record<string, string>;
+  onChange?: (draft: PortfolioFormData) => void;
 }
 
 function getInitialFormData(initialData: Partial<PortfolioFormData> = {}): PortfolioFormData {
@@ -58,6 +59,7 @@ export default function PortfolioForm({
   isSubmitting = false,
   serverError = null,
   serverFieldErrors = {},
+  onChange,
 }: PortfolioFormProps) {
   const [prevInitialData, setPrevInitialData] = useState(initialData);
   const [formData, setFormData] = useState<PortfolioFormData>(() =>
@@ -127,10 +129,12 @@ export default function PortfolioForm({
     if (field === "profileImageUrl") {
       setImageLoadError(false);
     }
-    setFormData((prev) => ({
-      ...prev,
+    const updated: PortfolioFormData = {
+      ...formData,
       [field]: value,
-    }));
+    };
+    setFormData(updated);
+    onChange?.(updated);
 
     if (touched[field]) {
       const err = validateField(field, value);
@@ -142,13 +146,15 @@ export default function PortfolioForm({
   };
 
   const handleSocialChange = (platform: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
+    const updated: PortfolioFormData = {
+      ...formData,
       socialLinks: {
-        ...prev.socialLinks,
+        ...formData.socialLinks,
         [platform]: value,
       },
-    }));
+    };
+    setFormData(updated);
+    onChange?.(updated);
   };
 
   const handleBlur = (field: keyof PortfolioFormData) => {

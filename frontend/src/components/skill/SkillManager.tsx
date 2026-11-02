@@ -24,14 +24,27 @@ import {
 
 export interface SkillManagerProps {
   portfolioId: string;
+  initialSkills?: Skill[];
+  onSkillsChange?: (skills: Skill[]) => void;
 }
 
-export default function SkillManager({ portfolioId }: SkillManagerProps) {
+export default function SkillManager({
+  portfolioId,
+  initialSkills,
+  onSkillsChange,
+}: SkillManagerProps) {
   const { token } = useAuth();
 
   // Portfolio Skills State
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [prevInitialSkills, setPrevInitialSkills] = useState(initialSkills);
+  const [skills, setSkills] = useState<Skill[]>(() => initialSkills ?? []);
+  const [isLoading, setIsLoading] = useState(!initialSkills);
+
+  if (initialSkills !== undefined && initialSkills !== prevInitialSkills) {
+    setPrevInitialSkills(initialSkills);
+    setSkills(initialSkills);
+    setIsLoading(false);
+  }
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -60,12 +73,10 @@ export default function SkillManager({ portfolioId }: SkillManagerProps) {
   const fetchSkills = useCallback(async () => {
     if (!token || !portfolioId) return;
 
-    setIsLoading(true);
-    setError(null);
-
     try {
       const response = await getSkills(portfolioId, token);
-      setSkills(response.skills || []);
+      const list = response.skills || [];
+      setSkills(list);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message || "Failed to load portfolio skills.");
@@ -78,8 +89,14 @@ export default function SkillManager({ portfolioId }: SkillManagerProps) {
   }, [portfolioId, token]);
 
   useEffect(() => {
+    if (initialSkills !== undefined) return;
     void fetchSkills();
-  }, [fetchSkills]);
+  }, [fetchSkills, initialSkills]);
+
+  // Keep the parent (live preview) in sync with local list changes.
+  useEffect(() => {
+    onSkillsChange?.(skills);
+  }, [skills, onSkillsChange]);
 
   // 2. Fetch Skill Catalog (supports search and category filtering)
   const fetchCatalog = useCallback(async (search?: string, category?: string) => {
@@ -213,9 +230,7 @@ export default function SkillManager({ portfolioId }: SkillManagerProps) {
       if (editingSkill) {
         // Edit existing skill
         const response = await updateSkill(editingSkill.id, formData, token);
-        setSkills((prev) =>
-          prev.map((s) => (s.id === editingSkill.id ? response.skill : s))
-        );
+        setSkills((prev) => prev.map((s) => (s.id === editingSkill.id ? response.skill : s)));
         setSuccessMessage(`Skill "${response.skill.name}" updated successfully.`);
       } else {
         // Create new custom skill
@@ -348,7 +363,11 @@ export default function SkillManager({ portfolioId }: SkillManagerProps) {
           <p className="text-xs text-[#64748b] mb-4">{error}</p>
           <button
             type="button"
-            onClick={() => void fetchSkills()}
+            onClick={() => {
+              setIsLoading(true);
+              setError(null);
+              void fetchSkills();
+            }}
             className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-sm transition-all cursor-pointer"
           >
             Try Again
