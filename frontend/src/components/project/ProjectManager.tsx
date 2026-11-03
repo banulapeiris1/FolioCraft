@@ -23,13 +23,26 @@ import {
 
 export interface ProjectManagerProps {
   portfolioId: string;
+  initialProjects?: Project[];
+  onProjectsChange?: (projects: Project[]) => void;
 }
 
-export default function ProjectManager({ portfolioId }: ProjectManagerProps) {
+export default function ProjectManager({
+  portfolioId,
+  initialProjects,
+  onProjectsChange,
+}: ProjectManagerProps) {
   const { token } = useAuth();
 
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [prevInitialProjects, setPrevInitialProjects] = useState(initialProjects);
+  const [projects, setProjects] = useState<Project[]>(() => initialProjects ?? []);
+  const [isLoading, setIsLoading] = useState(!initialProjects);
+
+  if (initialProjects !== undefined && initialProjects !== prevInitialProjects) {
+    setPrevInitialProjects(initialProjects);
+    setProjects(initialProjects);
+    setIsLoading(false);
+  }
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Success alert message
@@ -50,12 +63,10 @@ export default function ProjectManager({ portfolioId }: ProjectManagerProps) {
   const fetchProjects = useCallback(async () => {
     if (!token || !portfolioId) return;
 
-    setIsLoading(true);
-    setFetchError(null);
-
     try {
       const response = await getProjects(portfolioId, token);
-      setProjects(response.projects || []);
+      const list = response.projects || [];
+      setProjects(list);
     } catch (err) {
       if (err instanceof ApiError) {
         setFetchError(err.message || "Failed to load portfolio projects.");
@@ -68,8 +79,14 @@ export default function ProjectManager({ portfolioId }: ProjectManagerProps) {
   }, [portfolioId, token]);
 
   useEffect(() => {
+    if (initialProjects !== undefined) return;
     void fetchProjects();
-  }, [fetchProjects]);
+  }, [fetchProjects, initialProjects]);
+
+  // Keep the parent (live preview) in sync with local list changes.
+  useEffect(() => {
+    onProjectsChange?.(projects);
+  }, [projects, onProjectsChange]);
 
   // Open Add Project Modal
   const handleOpenAdd = () => {
@@ -99,9 +116,7 @@ export default function ProjectManager({ portfolioId }: ProjectManagerProps) {
       if (editingProject) {
         // Edit existing project
         const response = await updateProject(editingProject.id, formData, token);
-        setProjects((prev) =>
-          prev.map((p) => (p.id === editingProject.id ? response.project : p))
-        );
+        setProjects((prev) => prev.map((p) => (p.id === editingProject.id ? response.project : p)));
         setSuccessMessage(`Project "${response.project.title}" updated successfully.`);
       } else {
         // Create new project
@@ -218,7 +233,11 @@ export default function ProjectManager({ portfolioId }: ProjectManagerProps) {
           <p className="text-xs text-[#64748b] mb-4">{fetchError}</p>
           <button
             type="button"
-            onClick={() => void fetchProjects()}
+            onClick={() => {
+              setIsLoading(true);
+              setFetchError(null);
+              void fetchProjects();
+            }}
             className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-sm transition-all cursor-pointer"
           >
             Try Again

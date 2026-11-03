@@ -23,13 +23,26 @@ import {
 
 export interface ExperienceManagerProps {
   portfolioId: string;
+  initialExperiences?: Experience[];
+  onExperiencesChange?: (experiences: Experience[]) => void;
 }
 
-export default function ExperienceManager({ portfolioId }: ExperienceManagerProps) {
+export default function ExperienceManager({
+  portfolioId,
+  initialExperiences,
+  onExperiencesChange,
+}: ExperienceManagerProps) {
   const { token } = useAuth();
 
-  const [experiences, setExperiences] = useState<Experience[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [prevInitialExperiences, setPrevInitialExperiences] = useState(initialExperiences);
+  const [experiences, setExperiences] = useState<Experience[]>(() => initialExperiences ?? []);
+  const [isLoading, setIsLoading] = useState(!initialExperiences);
+
+  if (initialExperiences !== undefined && initialExperiences !== prevInitialExperiences) {
+    setPrevInitialExperiences(initialExperiences);
+    setExperiences(initialExperiences);
+    setIsLoading(false);
+  }
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Success alert message
@@ -50,9 +63,6 @@ export default function ExperienceManager({ portfolioId }: ExperienceManagerProp
   const fetchExperiences = useCallback(async () => {
     if (!token || !portfolioId) return;
 
-    setIsLoading(true);
-    setFetchError(null);
-
     try {
       const response = await getExperiences(portfolioId, token);
       const list = response.experience || response.experiences || [];
@@ -69,8 +79,14 @@ export default function ExperienceManager({ portfolioId }: ExperienceManagerProp
   }, [portfolioId, token]);
 
   useEffect(() => {
+    if (initialExperiences !== undefined) return;
     void fetchExperiences();
-  }, [fetchExperiences]);
+  }, [fetchExperiences, initialExperiences]);
+
+  // Keep the parent (live preview) in sync with local list changes.
+  useEffect(() => {
+    onExperiencesChange?.(experiences);
+  }, [experiences, onExperiencesChange]);
 
   // Open Add Experience Modal
   const handleOpenAdd = () => {
@@ -101,9 +117,7 @@ export default function ExperienceManager({ portfolioId }: ExperienceManagerProp
         // Edit existing experience
         const response = await updateExperience(editingExperience.id, formData, token);
         const updated = response.experience;
-        setExperiences((prev) =>
-          prev.map((e) => (e.id === editingExperience.id ? updated : e))
-        );
+        setExperiences((prev) => prev.map((e) => (e.id === editingExperience.id ? updated : e)));
         setSuccessMessage(`Experience at "${updated.company}" updated successfully.`);
       } else {
         // Create new experience
@@ -225,7 +239,11 @@ export default function ExperienceManager({ portfolioId }: ExperienceManagerProp
           <p className="text-xs text-[#64748b] mb-4">{fetchError}</p>
           <button
             type="button"
-            onClick={() => void fetchExperiences()}
+            onClick={() => {
+              setIsLoading(true);
+              setFetchError(null);
+              void fetchExperiences();
+            }}
             className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-sm transition-all cursor-pointer"
           >
             Try Again
