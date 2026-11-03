@@ -177,6 +177,22 @@ export default function EditPortfolioPage({
     setCurrentDraft(draft);
   }, []);
 
+  // Reload collections after a CV import created items on the server.
+  // On failure, keep the current lists rather than clearing them.
+  const refreshCollections = useCallback(async () => {
+    if (!token) return;
+    const [projectsRes, skillsRes, experiencesRes] = await Promise.all([
+      getProjects(portfolioId, token).catch(() => null),
+      getSkills(portfolioId, token).catch(() => null),
+      getExperiences(portfolioId, token).catch(() => null),
+    ]);
+    if (projectsRes) setProjects(projectsRes.projects || []);
+    if (skillsRes) setSkills(skillsRes.skills || []);
+    if (experiencesRes) {
+      setExperiences(experiencesRes.experiences || experiencesRes.experience || []);
+    }
+  }, [portfolioId, token]);
+
   const liveViewData: PortfolioViewData = useMemo(() => {
     return mapDraftToPortfolioViewData(currentDraft || initialData, {
       projects,
@@ -471,12 +487,13 @@ export default function EditPortfolioPage({
             setSuccessFeedback("CV profile data has been imported into your portfolio form. Review and save your changes.");
           }}
           onNavigateTab={(tab) => setActiveTab(tab)}
+          onCollectionsImported={() => void refreshCollections()}
         />
       )}
     </>
   );
 
-  const renderPreviewContent = (className?: string) => (
+  const renderPreviewContent = (className?: string, shellClassName?: string) => (
     <section
       data-testid="live-preview-section"
       className={`flex flex-col ${className || ""}`}
@@ -487,6 +504,7 @@ export default function EditPortfolioPage({
           data={liveViewData}
           templateId={liveViewData.template}
           portfolioId={portfolioId}
+          className={shellClassName}
           onTemplateChange={(selectedTpl) => {
             handleDraftChange({
               ...(currentDraft || initialData),
@@ -652,7 +670,7 @@ export default function EditPortfolioPage({
             <div className="flex lg:hidden items-center justify-center p-1 bg-[#f3f0ff] rounded-xl border border-[#dcd3f8] mb-6">
               <button
                 type="button"
-                onClick={() => setMobileActiveView("editor")}
+                onClick={() => { setLayoutMode("split"); setMobileActiveView("editor"); }}
                 className={`flex-1 py-2 rounded-lg text-xs font-semibold text-center transition-all cursor-pointer ${
                   mobileActiveView === "editor"
                     ? "bg-white text-[#6e56cf] shadow-xs"
@@ -663,7 +681,7 @@ export default function EditPortfolioPage({
               </button>
               <button
                 type="button"
-                onClick={() => setMobileActiveView("preview")}
+                onClick={() => { setLayoutMode("split"); setMobileActiveView("preview"); }}
                 className={`flex-1 py-2 rounded-lg text-xs font-semibold text-center transition-all cursor-pointer ${
                   mobileActiveView === "preview"
                     ? "bg-white text-[#6e56cf] shadow-xs"
@@ -691,7 +709,8 @@ export default function EditPortfolioPage({
                     mobileActiveView === "editor" ? "hidden lg:block" : "block"
                   }`}
                 >
-                  {renderPreviewContent()}
+                  {/* Cap height on desktop so the preview scrolls inside its sticky panel */}
+                  {renderPreviewContent(undefined, "lg:h-[calc(100vh-7rem)]")}
                 </div>
               </div>
             ) : layoutMode === "editor" ? (

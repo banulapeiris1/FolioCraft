@@ -247,4 +247,41 @@ test("Phase 9 LP-03: Preview Shell & Layout Controls Suite", async (t) => {
     assert.ok(htmlWithSwitcher.includes("minimal"), "Should include minimal option");
     assert.ok(htmlWithSwitcher.includes("professional"), "Should include professional option");
   });
+
+  await t.test("10. Template switcher exposes the active template to assistive tech", () => {
+    const viewData = mapDraftToPortfolioViewData({ ...sampleDraft, template: "minimal" });
+    const html = renderToStaticMarkup(
+      React.createElement(PreviewShell, { data: viewData, onTemplateChange: () => {} })
+    );
+
+    assert.ok(html.includes('aria-label="Preview template"'), "Switcher group should be labelled");
+    assert.ok(
+      /aria-label="Use minimal template" aria-pressed="true"/.test(html),
+      "Active template button should be pressed"
+    );
+    assert.ok(
+      /aria-label="Use modern template" aria-pressed="false"/.test(html),
+      "Inactive template button should not be pressed"
+    );
+  });
+
+  await t.test("11. Device frames keep their emulated width and sit inside a zoom sizer", () => {
+    const viewData = mapDraftToPortfolioViewData(sampleDraft);
+
+    for (const device of ["tablet", "mobile"] as const) {
+      const html = renderToStaticMarkup(
+        React.createElement(PreviewShell, { data: viewData, initialDevice: device })
+      );
+      assert.ok(html.includes('data-testid="preview-zoom-sizer"'), `${device}: zoom sizer present`);
+      // shrink-0 stops a narrow panel from squeezing the 768px/375px frame
+      const frameTag = html.match(/<div[^>]*data-testid="preview-device-frame"[^>]*>/)?.[0] ?? "";
+      assert.ok(frameTag.includes("shrink-0"), `${device}: frame must not shrink below its width`);
+    }
+
+    // Zoomed frames scale from the top-left so the sizer can reserve exact space
+    const zoomed = renderToStaticMarkup(
+      React.createElement(PreviewShell, { data: viewData, initialZoom: 1.3 })
+    );
+    assert.ok(zoomed.includes("transform-origin:top left"), "Zoom should scale from top-left");
+  });
 });

@@ -39,6 +39,8 @@ export interface CvUploadManagerProps {
   portfolio?: Portfolio | null;
   onProfileUpdated?: (updatedPortfolio: Portfolio) => void;
   onNavigateTab?: (tab: "profile" | "projects" | "skills" | "experience" | "cv") => void;
+  /** Called after an import created experiences, skills or projects, so callers can reload them. */
+  onCollectionsImported?: () => void;
 }
 
 export default function CvUploadManager({
@@ -46,6 +48,7 @@ export default function CvUploadManager({
   portfolio = null,
   onProfileUpdated,
   onNavigateTab,
+  onCollectionsImported,
 }: CvUploadManagerProps) {
   const { token } = useAuth();
 
@@ -321,6 +324,10 @@ export default function CvUploadManager({
         const msg = err instanceof Error ? err.message : "API error";
         summary.errors.push(`Project "${proj.title}": ${msg}`);
       }
+    }
+
+    if (summary.experiencesImported + summary.skillsImported + summary.projectsImported > 0) {
+      onCollectionsImported?.();
     }
 
     return summary;

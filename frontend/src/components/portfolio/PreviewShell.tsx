@@ -103,11 +103,48 @@ export function PreviewShell({
     onZoomChange?.(1.0);
   }, [onZoomChange]);
 
+  // Measure the canvas (inner width, excluding padding) and the unscaled frame.
+  // A CSS transform does not change layout size, so the frame is wrapped in a
+  // sizer that takes the zoomed size; this keeps scroll extents correct and
+  // prevents zoomed content from being clipped off the left edge.
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [canvasWidth, setCanvasWidth] = useState<number | null>(null);
+  const [frameSize, setFrameSize] = useState<{ w: number; h: number } | null>(null);
+
+  useEffect(() => {
+    const canvas = containerRef.current;
+    const frame = frameRef.current;
+    if (!canvas || !frame || typeof ResizeObserver === "undefined") return;
+
+    const measure = () => {
+      const style = window.getComputedStyle(canvas);
+      const inner =
+        canvas.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      setCanvasWidth(inner > 0 ? Math.floor(inner) : null);
+      setFrameSize({ w: frame.offsetWidth, h: frame.offsetHeight });
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(canvas);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, []);
+
+  const isZoomed = zoom !== 1.0;
+  // Desktop fills the canvas; pin that width so zooming scales it instead of re-flowing it.
+  const desktopFrameWidth = device === "desktop" && canvasWidth ? canvasWidth : undefined;
+
   // Fit to container width calculation
   const handleFitToWidth = useCallback(() => {
     if (!containerRef.current) return;
-    const availableWidth = containerRef.current.clientWidth - 48; // padding
-    const targetWidth = device === "mobile" ? 375 : device === "tablet" ? 768 : 1200;
+    const style = window.getComputedStyle(containerRef.current);
+    const availableWidth =
+      containerRef.current.clientWidth -
+      parseFloat(style.paddingLeft) -
+      parseFloat(style.paddingRight);
+    const targetWidth =
+      device === "mobile" ? 375 : device === "tablet" ? 768 : availableWidth;
 
     if (availableWidth > 0 && targetWidth > 0) {
       const calculatedScale = Math.min(1.0, Math.max(MIN_ZOOM, availableWidth / targetWidth));
@@ -276,11 +313,17 @@ export function PreviewShell({
             </button>
 
             {onTemplateChange && (
-              <div className="hidden lg:flex items-center gap-1 border-l border-[#eae6f5] pl-2 ml-1">
+              <div
+                role="group"
+                aria-label="Preview template"
+                className="hidden lg:flex items-center gap-1 border-l border-[#eae6f5] pl-2 ml-1"
+              >
                 {(["modern", "minimal", "professional"] as PortfolioTemplateId[]).map((tId) => (
                   <button
                     key={tId}
                     type="button"
+                    aria-label={`Use ${tId} template`}
+                    aria-pressed={activeTemplate === tId}
                     onClick={() => onTemplateChange(tId)}
                     className={`px-2 py-0.5 rounded-md text-[10px] font-mono capitalize transition-all cursor-pointer ${
                       activeTemplate === tId
@@ -301,11 +344,23 @@ export function PreviewShell({
       <div
         ref={containerRef}
         data-testid="preview-viewport-canvas"
-        className="relative flex-1 overflow-auto p-4 sm:p-6 flex justify-center bg-[#f1edf9]/50 min-h-[500px]"
+        className="relative flex-1 min-h-[500px] overflow-auto p-4 sm:p-6 bg-[#f1edf9]/50"
       >
         <div
+          data-testid="preview-zoom-sizer"
+          className="mx-auto shrink-0"
+          style={
+            isZoomed && frameSize
+              ? { width: frameSize.w * zoom, height: frameSize.h * zoom }
+              : undefined
+          }
+        >
+        <div
+          ref={frameRef}
           data-testid="preview-device-frame"
-          className={`transition-all duration-200 origin-top flex flex-col ${
+          className={`flex flex-col shrink-0 ${
+            isZoomed ? "" : "mx-auto"
+          } ${
             device === "desktop"
               ? "w-full max-w-full bg-white rounded-xl shadow-sm border border-[#eae6f5]"
               : device === "tablet"
@@ -313,8 +368,10 @@ export function PreviewShell({
               : "w-[375px] min-h-[720px] bg-white rounded-[36px] border-8 border-slate-900 shadow-2xl overflow-hidden relative"
           }`}
           style={{
-            transform: zoom !== 1.0 ? `scale(${zoom})` : undefined,
-            transformOrigin: "top center",
+            width: desktopFrameWidth,
+            maxWidth: desktopFrameWidth ? "none" : undefined,
+            transform: isZoomed ? `scale(${zoom})` : undefined,
+            transformOrigin: "top left",
           }}
         >
           {/* Mobile Notch Bar */}
@@ -356,6 +413,7 @@ export function PreviewShell({
               <div className="w-32 h-1 bg-slate-300 rounded-full" />
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
