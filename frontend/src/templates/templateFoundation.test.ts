@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import React from "react";
 import {
   PortfolioViewData,
-  PortfolioTemplateId,
   TemplateProps,
 } from "./types";
 import {

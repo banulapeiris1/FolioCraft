@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import test from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
-import { TemplateSelector, TemplateSelectorProps } from "./TemplateSelector";
+import { TemplateSelector } from "./TemplateSelector";
 import { PortfolioTemplateId } from "@/types/portfolio";
 import { TEMPLATE_LIST } from "@/templates/registry";
 
@@ -18,6 +19,7 @@ test("TPL-03: TemplateSelector Component & Persistence Contract Suite", async (t
       },
     });
 
+    assert.equal(selectedId, "modern");
     assert.ok(React.isValidElement<React.HTMLAttributes<HTMLDivElement>>(element));
     assert.equal(element.props.role, "radiogroup");
 

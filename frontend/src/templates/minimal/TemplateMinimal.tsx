@@ -144,7 +144,7 @@ export function TemplateMinimal({ data, className = "" }: TemplateProps): React.
 
   // Social links entries
   const socialEntries = data.socialLinks
-    ? Object.entries(data.socialLinks).filter(([_, url]) => Boolean(url && url.trim()))
+    ? Object.entries(data.socialLinks).filter(([, url]) => Boolean(url && url.trim()))
     : [];
 
   return (

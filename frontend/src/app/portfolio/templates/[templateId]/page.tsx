@@ -41,11 +41,10 @@ function TemplatePreviewContent({
   const searchParams = useSearchParams();
   const rawIdParam = searchParams.get("id");
 
-  const { user, token, isLoading: isAuthLoading, isAuthenticated, logout } = useAuth();
+  const { user, token, isLoading: isAuthLoading, isAuthenticated } = useAuth();
 
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [portfolioViewData, setPortfolioViewData] = useState<PortfolioViewData | null>(null);
-  const [isLoadingData, setIsLoadingData] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -53,6 +52,7 @@ function TemplatePreviewContent({
 
   // Validate template existence
   const isTemplateValid = isValidTemplateId(normalizedTemplateId);
+  const [isLoadingData, setIsLoadingData] = useState(() => Boolean(isTemplateValid));
 
   // Authentication guard
   useEffect(() => {
@@ -65,9 +65,6 @@ function TemplatePreviewContent({
   useEffect(() => {
     let isMounted = true;
     if (!token || !isAuthenticated || !isTemplateValid) {
-      if (!isTemplateValid) {
-        setIsLoadingData(false);
-      }
       return;
     }
 
