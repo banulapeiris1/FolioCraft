@@ -25,7 +25,7 @@ import {
 } from "@/lib/api";
 import { Portfolio, PortfolioTemplateId } from "@/types/portfolio";
 import { PortfolioViewData } from "@/templates/types";
-import { getTemplateDefinition, isValidTemplateId } from "@/templates/registry";
+import { getTemplateDefinition } from "@/templates/registry";
 
 function TemplatesGalleryContent() {
   const router = useRouter();
@@ -36,6 +36,14 @@ function TemplatesGalleryContent() {
 
   const [portfoliosList, setPortfoliosList] = useState<Portfolio[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(rawIdParam);
+  const [prevRawIdParam, setPrevRawIdParam] = useState(rawIdParam);
+  if (rawIdParam !== prevRawIdParam) {
+    setPrevRawIdParam(rawIdParam);
+    if (rawIdParam) {
+      setSelectedPortfolioId(rawIdParam);
+    }
+  }
+
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [portfolioViewData, setPortfolioViewData] = useState<PortfolioViewData | null>(null);
 
@@ -53,13 +61,6 @@ function TemplatesGalleryContent() {
       router.replace("/login");
     }
   }, [isAuthLoading, isAuthenticated, router]);
-
-  // Sync state if URL query param changes
-  useEffect(() => {
-    if (rawIdParam && rawIdParam !== selectedPortfolioId) {
-      setSelectedPortfolioId(rawIdParam);
-    }
-  }, [rawIdParam, selectedPortfolioId]);
 
   // Load portfolio data
   useEffect(() => {
