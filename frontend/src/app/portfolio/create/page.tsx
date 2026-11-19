@@ -161,6 +161,7 @@ export default function CreatePortfolioPage() {
         {/* Portfolio Form in Create Mode */}
         <PortfolioForm
           mode="create"
+          token={token}
           initialData={{
             name: user.name || "",
             email: user.email || "",

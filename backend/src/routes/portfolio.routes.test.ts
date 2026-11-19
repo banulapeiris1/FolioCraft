@@ -74,7 +74,7 @@ test("PORTFOLIO-03: Create Portfolio HTTP API Suite (POST /api/portfolios)", asy
       },
       username: `siyumi_${uniqueSuffix}`,
       template: "modern",
-      published: false,
+      // PUB-06D (D6): `published` is no longer accepted on create; new portfolios are drafts
     };
 
     const res = await fetch(`${baseUrl}/api/portfolios`, {
@@ -767,13 +767,15 @@ test("PORTFOLIO-05: Update and Delete Portfolio HTTP API Suite (PUT & DELETE /ap
         "Content-Type": "application/json",
         Authorization: `Bearer ${user1Jwt}`,
       },
-      body: JSON.stringify({ username: `p1_${uniqueSuffix}`, published: true }),
+      // PUB-06D (D6): `published` removed — publishing state is owned by POST /:id/publish
+      body: JSON.stringify({ username: `p1_${uniqueSuffix}`, title: "Updated Title" }),
     });
 
     assert.equal(res.status, 200);
     const body = (await res.json()) as { portfolio: Portfolio };
     assert.equal(body.portfolio.username, `p1_${uniqueSuffix}`);
-    assert.equal(body.portfolio.published, true);
+    assert.equal(body.portfolio.title, "Updated Title");
+    assert.equal(body.portfolio.published, false, "Generic update must not change publishing state");
   });
 
   await t.test("13. PUT /api/portfolios/:id invalid field types return 400 Bad Request", async () => {

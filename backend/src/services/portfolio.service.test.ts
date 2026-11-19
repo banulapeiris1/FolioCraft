@@ -69,7 +69,7 @@ test("PORTFOLIO-02: Portfolio Backend Service Integration Suite", async (t) => {
       profileImageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb",
       socialLinks,
       template: "minimal",
-      published: true,
+      // PUB-06D (D6): `published` is no longer accepted by createPortfolio
     });
 
     assert.ok(portfolio.id);
@@ -90,7 +90,7 @@ test("PORTFOLIO-02: Portfolio Backend Service Integration Suite", async (t) => {
     assert.equal(portfolio.profileImageUrl, "https://images.unsplash.com/photo-1534528741775-53994a69daeb");
     assert.deepEqual(portfolio.socialLinks, socialLinks);
     assert.equal(portfolio.template, "minimal");
-    assert.equal(portfolio.published, true);
+    assert.equal(portfolio.published, false, "New portfolios always start as drafts");
     assert.ok(portfolio.createdAt instanceof Date);
     assert.ok(portfolio.updatedAt instanceof Date);
   });
@@ -271,7 +271,7 @@ test("PORTFOLIO-02: Portfolio Backend Service Integration Suite", async (t) => {
     assert.equal(updated.phone, "+1 (555) 987-6543");
     assert.equal(updated.location, "Seattle, WA");
     assert.equal(updated.template, "minimal");
-    assert.equal(updated.published, true);
+    assert.equal(updated.published, false);
   });
 
   await t.test("13. username update respects uniqueness (rejects collision with 409)", async () => {

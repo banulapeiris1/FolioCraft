@@ -1,11 +1,20 @@
 import { pool } from "../config/database";
 import { AppError } from "../utils/errors";
+import {
+  validateUsername,
+  SUPPORTED_TEMPLATES,
+  findProtectedPublishingField,
+  PROTECTED_PUBLISHING_FIELD_MESSAGE,
+} from "../utils/validation";
 import type {
   Portfolio,
   CreatePortfolioDto,
   UpdatePortfolioDto,
   DeletePortfolioResult,
   SocialLinks,
+  CheckUsernameResult,
+  PublishPortfolioResult,
+  UnpublishPortfolioResult,
 } from "../types/portfolio.types";
 
 const UUID_REGEX =
@@ -25,6 +34,7 @@ const PORTFOLIO_COLUMNS = `
   username,
   template,
   published,
+  published_at,
   created_at,
   updated_at
 `;
@@ -43,6 +53,7 @@ interface PortfolioDbRow {
   username: string;
   template: string;
   published: boolean;
+  published_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -62,9 +73,21 @@ function mapRowToPortfolio(row: PortfolioDbRow): Portfolio {
     username: row.username,
     template: row.template,
     published: row.published,
+    publishedAt: row.published_at ? new Date(row.published_at) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+/**
+ * Defense in depth for D6 (PUB-06D): generic create/update must never carry
+ * publishing state, even if a caller bypasses the HTTP controller.
+ */
+function assertNoPublishingFields(data: unknown): void {
+  const field = findProtectedPublishingField(data);
+  if (field) {
+    throw new AppError(`'${field}' cannot be modified here. ${PROTECTED_PUBLISHING_FIELD_MESSAGE}`, 400);
+  }
 }
 
 export class PortfolioService {
@@ -92,9 +115,17 @@ export class PortfolioService {
       throw new AppError("Username is required", 400);
     }
 
+    assertNoPublishingFields(data);
+
+    // Shared username rules (length, characters, reserved names) — PUB-06D / D5
+    const usernameCheck = validateUsername(data.username);
+    if (!usernameCheck.isValid) {
+      throw new AppError(usernameCheck.error || "Invalid username", 400);
+    }
+
     const trimmedName = data.name.trim();
     const trimmedTitle = data.title.trim();
-    const normalizedUsername = data.username.trim().toLowerCase();
+    const normalizedUsername = usernameCheck.normalizedUsername;
     const normalizedEmail = data.email ? data.email.trim().toLowerCase() : null;
     const trimmedPhone = data.phone ? data.phone.trim() : null;
     const trimmedLocation = data.location ? data.location.trim() : null;
@@ -104,7 +135,8 @@ export class PortfolioService {
       : null;
     const socialLinks = data.socialLinks || {};
     const template = data.template ? data.template.trim() : "modern";
-    const published = data.published ?? false;
+    // New portfolios always start as drafts; only POST /:id/publish publishes (D6)
+    const published = false;
 
     try {
       const result = await pool.query<PortfolioDbRow>(
@@ -220,6 +252,8 @@ export class PortfolioService {
       throw new AppError("Invalid user ID", 400);
     }
 
+    assertNoPublishingFields(data);
+
     const existingResult = await pool.query<PortfolioDbRow>(
       `SELECT ${PORTFOLIO_COLUMNS}
        FROM portfolios
@@ -260,8 +294,13 @@ export class PortfolioService {
       if (!data.username.trim()) {
         throw new AppError("Username cannot be empty", 400);
       }
+      // Shared username rules (length, characters, reserved names) — PUB-06D / D5
+      const usernameCheck = validateUsername(data.username);
+      if (!usernameCheck.isValid) {
+        throw new AppError(usernameCheck.error || "Invalid username", 400);
+      }
       updates.push(`username = $${paramIdx++}`);
-      values.push(data.username.trim().toLowerCase());
+      values.push(usernameCheck.normalizedUsername);
     }
 
     if (data.email !== undefined) {
@@ -297,11 +336,6 @@ export class PortfolioService {
     if (data.template !== undefined) {
       updates.push(`template = $${paramIdx++}`);
       values.push(data.template.trim());
-    }
-
-    if (data.published !== undefined) {
-      updates.push(`published = $${paramIdx++}`);
-      values.push(Boolean(data.published));
     }
 
     if (updates.length === 0) {
@@ -376,6 +410,257 @@ export class PortfolioService {
     return {
       success: true,
       id: portfolioId,
+    };
+  }
+
+  /**
+   * Checks whether a username is available for registration or assignment (PUB-03).
+   *
+   * Rules:
+   * 1. Validates format (3-50 chars, alphanumeric + hyphens/underscores).
+   * 2. Rejects system-reserved names with 400 Bad Request.
+   * 3. Parameterized database query (case-insensitive via LOWER(TRIM(username))).
+   * 4. If portfolioId is provided and owned by userId with that username, returns available: true.
+   * 5. Does not disclose account information of existing holders.
+   */
+  async checkUsernameAvailability(
+    rawUsername: string,
+    userId: string,
+    portfolioId?: string
+  ): Promise<CheckUsernameResult> {
+    const validation = validateUsername(rawUsername);
+    if (!validation.isValid) {
+      throw new AppError(validation.error || "Invalid username", 400);
+    }
+
+    const normalized = validation.normalizedUsername;
+
+    const result = await pool.query<{ id: string; user_id: string }>(
+      `SELECT id, user_id FROM portfolios WHERE LOWER(TRIM(username)) = $1`,
+      [normalized]
+    );
+
+    const existingRow = result.rows[0];
+    if (!existingRow) {
+      return {
+        available: true,
+        username: normalized,
+      };
+    }
+
+    // If portfolioId is provided and belongs to the authenticated user and matches this record,
+    // it is available for this portfolio (self-retaining handle).
+    if (
+      portfolioId &&
+      UUID_REGEX.test(portfolioId) &&
+      existingRow.id === portfolioId &&
+      existingRow.user_id === userId
+    ) {
+      return {
+        available: true,
+        username: normalized,
+      };
+    }
+
+    // Otherwise claimed by someone else or another portfolio
+    return {
+      available: false,
+      username: normalized,
+    };
+  }
+
+  /**
+   * Publishes a portfolio (PUB-03).
+   *
+   * Readiness & Security Checks:
+   * 1. Authenticated user must own the portfolio (403 if unauthorized, 404 if missing).
+   * 2. Username must be valid and non-reserved (3-50 chars).
+   * 3. Username must be unique across all portfolios (409 if collision).
+   * 4. Essential portfolio information must be present (name, title).
+   * 5. Selected template must be supported ('modern', 'minimal', 'professional').
+   * 6. Policy: First publication records published_at; republishing preserves original publication timestamp.
+   * 7. Returns generated publicUrl (/u/:username).
+   */
+  async publishPortfolio(
+    portfolioId: string,
+    userId: string
+  ): Promise<PublishPortfolioResult> {
+    if (!portfolioId || !UUID_REGEX.test(portfolioId)) {
+      throw new AppError("Portfolio not found", 404);
+    }
+
+    if (!userId || !UUID_REGEX.test(userId)) {
+      throw new AppError("Invalid user ID", 400);
+    }
+
+    const existingRes = await pool.query<{
+      id: string;
+      user_id: string;
+      name: string;
+      title: string;
+      username: string;
+      template: string;
+      published: boolean;
+      published_at: Date | null;
+    }>(
+      `SELECT id, user_id, name, title, username, template, published, published_at
+       FROM portfolios
+       WHERE id = $1`,
+      [portfolioId]
+    );
+
+    const existing = existingRes.rows[0];
+    if (!existing) {
+      throw new AppError("Portfolio not found", 404);
+    }
+
+    if (existing.user_id !== userId) {
+      throw new AppError("Unauthorized to modify this portfolio", 403);
+    }
+
+    // 1. Validate username format and non-reserved status
+    const usernameValidation = validateUsername(existing.username);
+    if (!usernameValidation.isValid) {
+      throw new AppError(
+        `Cannot publish portfolio: ${usernameValidation.error}`,
+        400
+      );
+    }
+
+    // 2. Validate username uniqueness against all other portfolios
+    const collisionCheck = await pool.query<{ id: string }>(
+      `SELECT id FROM portfolios WHERE LOWER(TRIM(username)) = $1 AND id != $2`,
+      [usernameValidation.normalizedUsername, portfolioId]
+    );
+    if (collisionCheck.rows.length > 0) {
+      throw new AppError(
+        "Cannot publish portfolio: username is already taken",
+        409
+      );
+    }
+
+    // 3. Check readiness: required portfolio info
+    if (!existing.name || !existing.name.trim()) {
+      throw new AppError(
+        "Cannot publish portfolio: portfolio name is required",
+        400
+      );
+    }
+
+    if (!existing.title || !existing.title.trim()) {
+      throw new AppError(
+        "Cannot publish portfolio: professional title is required",
+        400
+      );
+    }
+
+    // 4. Validate template support
+    const normalizedTemplate = (existing.template || "modern")
+      .trim()
+      .toLowerCase();
+    if (!SUPPORTED_TEMPLATES.has(normalizedTemplate)) {
+      throw new AppError(
+        `Cannot publish portfolio: unsupported template '${existing.template}'`,
+        400
+      );
+    }
+
+    // 5. Update database: set published = true, preserve or set published_at
+    const updateResult = await pool.query<{
+      id: string;
+      username: string;
+      published: boolean;
+      published_at: Date;
+    }>(
+      `UPDATE portfolios
+       SET published = true,
+           published_at = COALESCE(published_at, CURRENT_TIMESTAMP),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING id, username, published, published_at`,
+      [portfolioId]
+    );
+
+    const updated = updateResult.rows[0];
+    if (!updated) {
+      throw new AppError("Failed to publish portfolio", 500);
+    }
+
+    return {
+      id: updated.id,
+      username: updated.username,
+      published: updated.published,
+      publishedAt: updated.published_at,
+      publicUrl: `/u/${updated.username}`,
+    };
+  }
+
+  /**
+   * Unpublishes a portfolio (PUB-03).
+   *
+   * Rules:
+   * 1. Authenticated user must own the portfolio (403 if unauthorized, 404 if missing).
+   * 2. Sets published = false.
+   * 3. Preserves username and all portfolio content.
+   * 4. Safe on repeated unpublish requests (idempotent).
+   * 5. Immediately disables public retrieval via /api/public/:username.
+   */
+  async unpublishPortfolio(
+    portfolioId: string,
+    userId: string
+  ): Promise<UnpublishPortfolioResult> {
+    if (!portfolioId || !UUID_REGEX.test(portfolioId)) {
+      throw new AppError("Portfolio not found", 404);
+    }
+
+    if (!userId || !UUID_REGEX.test(userId)) {
+      throw new AppError("Invalid user ID", 400);
+    }
+
+    const existingRes = await pool.query<{
+      id: string;
+      user_id: string;
+      username: string;
+      published: boolean;
+    }>(
+      `SELECT id, user_id, username, published
+       FROM portfolios
+       WHERE id = $1`,
+      [portfolioId]
+    );
+
+    const existing = existingRes.rows[0];
+    if (!existing) {
+      throw new AppError("Portfolio not found", 404);
+    }
+
+    if (existing.user_id !== userId) {
+      throw new AppError("Unauthorized to modify this portfolio", 403);
+    }
+
+    const updateResult = await pool.query<{
+      id: string;
+      username: string;
+      published: boolean;
+    }>(
+      `UPDATE portfolios
+       SET published = false,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING id, username, published`,
+      [portfolioId]
+    );
+
+    const updated = updateResult.rows[0];
+    if (!updated) {
+      throw new AppError("Failed to unpublish portfolio", 500);
+    }
+
+    return {
+      id: updated.id,
+      username: updated.username,
+      published: updated.published,
+      publicUrl: null,
     };
   }
 }
