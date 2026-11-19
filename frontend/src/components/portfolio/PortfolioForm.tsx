@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   PortfolioFormData,
@@ -14,8 +14,11 @@ import {
   GlobeIcon,
   SparklesIcon,
   AlertCircleIcon,
+  CheckCircleIcon,
+  Loader2Icon,
 } from "./PortfolioIcons";
 import TemplateSelector from "./TemplateSelector";
+import { checkUsernameAvailability, ApiError } from "@/lib/api";
 
 export interface PortfolioFormProps {
   mode: "create" | "edit";
@@ -27,6 +30,7 @@ export interface PortfolioFormProps {
   serverError?: string | null;
   serverFieldErrors?: Record<string, string>;
   onChange?: (draft: PortfolioFormData) => void;
+  token?: string | null;
 }
 
 function getInitialFormData(initialData: Partial<PortfolioFormData> = {}): PortfolioFormData {
@@ -60,6 +64,7 @@ export default function PortfolioForm({
   serverError = null,
   serverFieldErrors = {},
   onChange,
+  token,
 }: PortfolioFormProps) {
   const [prevInitialData, setPrevInitialData] = useState(initialData);
   const [formData, setFormData] = useState<PortfolioFormData>(() =>
@@ -75,6 +80,57 @@ export default function PortfolioForm({
   const [errors, setErrors] = useState<PortfolioFormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [imageLoadError, setImageLoadError] = useState(false);
+
+  const [availabilityStatus, setAvailabilityStatus] = useState<
+    "idle" | "checking" | "available" | "unavailable"
+  >("idle");
+  const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null);
+
+  // Debounced username availability checker
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const raw = formData.username || "";
+      const trimmed = raw.trim().toLowerCase();
+
+      // Check basic syntax
+      if (!trimmed || !/^[a-zA-Z0-9_-]+$/.test(trimmed) || trimmed.length < 3 || trimmed.length > 50) {
+        setAvailabilityStatus("idle");
+        setAvailabilityMessage(null);
+        return;
+      }
+
+      // In edit mode, if identical to initial username, it belongs to this portfolio
+      if (initialData?.username && trimmed === initialData.username.trim().toLowerCase()) {
+        setAvailabilityStatus("available");
+        setAvailabilityMessage("Current username for this portfolio");
+        return;
+      }
+
+      setAvailabilityStatus("checking");
+      setAvailabilityMessage(null);
+
+      try {
+        const res = await checkUsernameAvailability(trimmed, token, portfolioId);
+        if (res.available) {
+          setAvailabilityStatus("available");
+          setAvailabilityMessage(res.message || "Username is available");
+        } else {
+          setAvailabilityStatus("unavailable");
+          setAvailabilityMessage(res.message || "Username is already taken or reserved");
+        }
+      } catch (err) {
+        if (err instanceof ApiError && (err.status === 409 || err.status === 400)) {
+          setAvailabilityStatus("unavailable");
+          setAvailabilityMessage(err.message);
+        } else {
+          setAvailabilityStatus("idle");
+          setAvailabilityMessage(null);
+        }
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [formData.username, initialData?.username, token, portfolioId]);
 
   const validateField = (name: keyof PortfolioFormData, value: unknown): string | undefined => {
     switch (name) {
@@ -99,6 +155,11 @@ export default function PortfolioForm({
       case "username":
         if (!value || typeof value !== "string" || !value.trim()) {
           return "Portfolio username is required";
+        }
+        // Mirrors backend validateUsername (PUB-06D / D5); reserved names are
+        // enforced server-side and surfaced via the availability check.
+        if (value.trim().length < 3) {
+          return "Username must be at least 3 characters long";
         }
         if (value.trim().length > 50) {
           return "Username cannot exceed 50 characters";
@@ -201,6 +262,15 @@ export default function PortfolioForm({
 
     if (!validateForm()) {
       // Scroll to top error if invalid
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    if (availabilityStatus === "unavailable") {
+      setErrors((prev) => ({
+        ...prev,
+        username: availabilityMessage || "Username is already taken or reserved",
+      }));
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
@@ -659,6 +729,26 @@ export default function PortfolioForm({
                 </span>
                 <span className="text-[11px] text-[#94a3b8]">1-50 chars (a-z, 0-9, -, _)</span>
               </div>
+
+              {/* Real-time Availability Feedback */}
+              {availabilityStatus === "checking" && (
+                <div className="flex items-center gap-1.5 text-xs text-[#6e56cf] mt-1 font-medium" data-testid="username-checking">
+                  <Loader2Icon className="w-3.5 h-3.5" />
+                  <span>Checking username availability...</span>
+                </div>
+              )}
+              {availabilityStatus === "available" && !usernameErrMsg && (
+                <div className="flex items-center gap-1.5 text-xs text-emerald-600 mt-1 font-medium" data-testid="username-available">
+                  <CheckCircleIcon className="w-3.5 h-3.5" />
+                  <span>{availabilityMessage || "Username is available"}</span>
+                </div>
+              )}
+              {availabilityStatus === "unavailable" && !usernameErrMsg && (
+                <div className="flex items-center gap-1.5 text-xs text-rose-600 mt-1 font-medium" data-testid="username-unavailable">
+                  <AlertCircleIcon className="w-3.5 h-3.5" />
+                  <span>{availabilityMessage || "Username is already taken or reserved"}</span>
+                </div>
+              )}
 
               {usernameErrMsg && (
                 <p id="username-error" className="flex items-center gap-1.5 text-xs text-[#dc2626] font-medium mt-1">

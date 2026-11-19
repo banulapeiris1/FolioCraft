@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS portfolios (
     username VARCHAR(255) NOT NULL UNIQUE,
     template VARCHAR(100) DEFAULT 'modern',
     published BOOLEAN DEFAULT false,
+    published_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -45,6 +46,7 @@ ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
 ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS location VARCHAR(255);
 ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
 ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS published_at TIMESTAMP WITH TIME ZONE;
 
 -- Ensure UNIQUE constraint on username if not already present
 DO $$
@@ -58,6 +60,10 @@ END $$;
 
 -- Index foreign key user_id for efficient user portfolio queries
 CREATE INDEX IF NOT EXISTS idx_portfolios_user_id ON portfolios(user_id);
+
+-- Case-insensitive unique index and public lookup indexes for publishing (PUB-02)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_portfolios_username_lower ON portfolios (LOWER(TRIM(username)));
+CREATE INDEX IF NOT EXISTS idx_portfolios_public_lookup ON portfolios (LOWER(TRIM(username)), published);
 
 -- PROJECTS TABLE (PROJECT-01)
 -- Stores projects belonging to portfolios

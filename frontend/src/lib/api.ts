@@ -156,6 +156,10 @@ import type {
   PortfolioFormData,
   PortfolioResponse,
   PortfoliosResponse,
+  PublicPortfolioResponse,
+  CheckUsernameResponse,
+  PublishPortfolioResponse,
+  UnpublishPortfolioResponse,
 } from "../types/portfolio";
 
 
@@ -219,6 +223,101 @@ export async function getPortfolios(
       Authorization: `Bearer ${token}`,
     },
   });
+}
+
+/**
+ * Retrieves a published developer portfolio by public username (GET /api/public/:username).
+ * Anonymous access — does NOT require authentication.
+ */
+export async function getPublicPortfolio(
+  username: string,
+  options?: RequestInit
+): Promise<PublicPortfolioResponse> {
+  return request<PublicPortfolioResponse>(
+    `/api/public/${encodeURIComponent(username.trim())}`,
+    {
+      method: "GET",
+      ...options,
+    }
+  );
+}
+
+/**
+ * Generates the absolute or relative public portfolio URL for a given username or portfolio.
+ */
+export function getPublicPortfolioUrl(
+  portfolioOrUsername: { username: string; publicUrl?: string | null } | string,
+  customOrigin?: string
+): string {
+  const origin =
+    customOrigin ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+  const publicUrl =
+    typeof portfolioOrUsername !== "string" ? portfolioOrUsername.publicUrl?.trim() : undefined;
+  if (publicUrl) {
+    // PUB-06: backend returns a relative /u/:username path; make it absolute.
+    return publicUrl.startsWith("/") ? `${origin}${publicUrl}` : publicUrl;
+  }
+  const username = typeof portfolioOrUsername === "string" ? portfolioOrUsername : portfolioOrUsername.username;
+  return `${origin}/u/${encodeURIComponent(username || "")}`;
+}
+
+/**
+ * Checks public username availability (GET /api/portfolios/check-username/:username[?portfolioId=UUID]) (PUB-03 / PUB-05)
+ * Requires JWT authentication.
+ */
+export async function checkUsernameAvailability(
+  username: string,
+  token?: string | null,
+  portfolioId?: string
+): Promise<CheckUsernameResponse> {
+  const query = portfolioId ? `?portfolioId=${encodeURIComponent(portfolioId)}` : "";
+  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+  return request<CheckUsernameResponse>(
+    `/api/portfolios/check-username/${encodeURIComponent(username.trim())}${query}`,
+    {
+      method: "GET",
+      headers,
+    }
+  );
+}
+
+/**
+ * Publishes an existing developer portfolio (POST /api/portfolios/:id/publish) (PUB-03 / PUB-05)
+ * Requires JWT authentication and ownership.
+ */
+export async function publishPortfolio(
+  portfolioId: string,
+  token: string
+): Promise<PublishPortfolioResponse> {
+  return request<PublishPortfolioResponse>(
+    `/api/portfolios/${encodeURIComponent(portfolioId)}/publish`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+}
+
+/**
+ * Unpublishes an active developer portfolio (POST /api/portfolios/:id/unpublish) (PUB-03 / PUB-05)
+ * Requires JWT authentication and ownership.
+ */
+export async function unpublishPortfolio(
+  portfolioId: string,
+  token: string
+): Promise<UnpublishPortfolioResponse> {
+  return request<UnpublishPortfolioResponse>(
+    `/api/portfolios/${encodeURIComponent(portfolioId)}/unpublish`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
 }
 
 import type {

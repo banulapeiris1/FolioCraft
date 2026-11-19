@@ -17,6 +17,7 @@ import {
   FolderGit2Icon,
   SparklesIcon,
   FileTextIcon,
+  ExternalLinkIcon,
 } from "@/components/portfolio/PortfolioIcons";
 import {
   getPortfolio,
@@ -24,6 +25,7 @@ import {
   getProjects,
   getSkills,
   getExperiences,
+  getPublicPortfolioUrl,
   ApiError,
 } from "@/lib/api";
 import { Portfolio, PortfolioFormData } from "@/types/portfolio";
@@ -37,6 +39,7 @@ import {
   PencilIcon,
 } from "@/components/portfolio/PortfolioIcons";
 import { PreviewShell } from "@/components/portfolio/PreviewShell";
+import PublishModal from "@/components/portfolio/PublishModal";
 
 export default function EditPortfolioPage({
   params,
@@ -59,6 +62,7 @@ export default function EditPortfolioPage({
   const [currentDraft, setCurrentDraft] = useState<PortfolioFormData | null>(null);
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -439,6 +443,7 @@ export default function EditPortfolioPage({
       {activeTab === "profile" ? (
         <PortfolioForm
           mode="edit"
+          token={token}
           portfolioId={portfolioId}
           initialData={currentDraft ?? initialData}
           isSubmitting={isSubmitting}
@@ -598,6 +603,47 @@ export default function EditPortfolioPage({
             </button>
           </div>
 
+          {/* Publishing & Live Portfolio Actions */}
+          {portfolio && (
+            <div className="flex items-center gap-2">
+              {portfolio.published ? (
+                <>
+                  <span className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Published
+                  </span>
+                  <a
+                    href={getPublicPortfolioUrl(portfolio.username)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#0f172a] bg-white hover:bg-[#f8f7fd] border border-[#eae6f5] transition-all"
+                    title="Open live published portfolio in new tab"
+                  >
+                    <ExternalLinkIcon className="w-3.5 h-3.5 text-[#6e56cf]" />
+                    <span className="hidden sm:inline">View Live</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setIsPublishModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#6e56cf] bg-[#f3f0ff] hover:bg-[#eae4fc] border border-[#dcd3f8] transition-all cursor-pointer"
+                  >
+                    <SparklesIcon className="w-3.5 h-3.5" />
+                    <span>Live Settings</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsPublishModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-sm shadow-[#6e56cf]/25 transition-all cursor-pointer"
+                >
+                  <SparklesIcon className="w-3.5 h-3.5" />
+                  <span>Publish</span>
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#f8f7fd] border border-[#eae6f5] text-xs">
               <span className="w-2 h-2 rounded-full bg-[#10b981]" />
@@ -725,6 +771,27 @@ export default function EditPortfolioPage({
           </>
         )}
       </main>
+      {/* Publishing & Public URL Modal */}
+      {isPublishModalOpen && portfolio && token && (
+        <PublishModal
+          isOpen={isPublishModalOpen}
+          portfolio={portfolio}
+          token={token}
+          onClose={() => setIsPublishModalOpen(false)}
+          onPortfolioUpdated={(updatedPortfolio: Portfolio) => {
+            setPortfolio(updatedPortfolio);
+            setCurrentDraft((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    username: updatedPortfolio.username,
+                    template: updatedPortfolio.template,
+                  }
+                : null
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

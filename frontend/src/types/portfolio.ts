@@ -36,6 +36,8 @@ export interface Portfolio {
   username: string;
   template: string;
   published: boolean;
+  publishedAt?: string | null;
+  publicUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +55,44 @@ export interface PortfolioResponse {
 export interface PortfoliosResponse {
   success?: boolean;
   portfolios: Portfolio[];
+}
+
+/**
+ * API response format for username availability check (PUB-03 / PUB-05).
+ */
+export interface CheckUsernameResponse {
+  success: boolean;
+  available: boolean;
+  username: string;
+  message?: string;
+}
+
+/**
+ * API response format for portfolio publishing (PUB-03 / PUB-05).
+ */
+export interface PublishPortfolioResponse {
+  success: boolean;
+  message: string;
+  portfolio: Portfolio;
+}
+
+/**
+ * API response format for portfolio unpublishing (PUB-03 / PUB-05).
+ */
+export interface UnpublishPortfolioResponse {
+  success: boolean;
+  message: string;
+  portfolio: Portfolio;
+}
+
+import type { PortfolioViewData } from "../templates/types";
+
+/**
+ * API response format for public portfolio retrieval (PUB-02 / PUB-04).
+ */
+export interface PublicPortfolioResponse {
+  success: boolean;
+  portfolio: PortfolioViewData;
 }
 
 /**

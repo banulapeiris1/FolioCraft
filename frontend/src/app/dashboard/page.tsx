@@ -14,6 +14,7 @@ import {
 import PortfolioCard, {
   PortfolioCardSkeleton,
 } from "@/components/portfolio/PortfolioCard";
+import PublishModal from "@/components/portfolio/PublishModal";
 import { getPortfolios, ApiError } from "@/lib/api";
 import { Portfolio } from "@/types/portfolio";
 
@@ -26,6 +27,17 @@ export default function DashboardPage() {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [isLoadingPortfolios, setIsLoadingPortfolios] = useState(true);
   const [portfoliosError, setPortfoliosError] = useState<string | null>(null);
+  const [selectedPortfolioForPublish, setSelectedPortfolioForPublish] =
+    useState<Portfolio | null>(null);
+
+  const handlePortfolioUpdated = (updatedPortfolio: Portfolio) => {
+    setPortfolios((prev) =>
+      prev.map((p) => (p.id === updatedPortfolio.id ? updatedPortfolio : p))
+    );
+    if (selectedPortfolioForPublish?.id === updatedPortfolio.id) {
+      setSelectedPortfolioForPublish(updatedPortfolio);
+    }
+  };
 
   // Protect route: Redirect unauthenticated users to /login
   useEffect(() => {
@@ -294,7 +306,11 @@ export default function DashboardPage() {
             /* Responsive Grid */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
               {portfolios.map((portfolio) => (
-                <PortfolioCard key={portfolio.id} portfolio={portfolio} />
+                <PortfolioCard
+                  key={portfolio.id}
+                  portfolio={portfolio}
+                  onPublishClick={(p) => setSelectedPortfolioForPublish(p)}
+                />
               ))}
             </div>
           )}
@@ -330,6 +346,17 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
+
+        {/* Publish & Public URL Management Modal */}
+        {selectedPortfolioForPublish && token && (
+          <PublishModal
+            isOpen={Boolean(selectedPortfolioForPublish)}
+            onClose={() => setSelectedPortfolioForPublish(null)}
+            portfolio={selectedPortfolioForPublish}
+            token={token}
+            onPortfolioUpdated={handlePortfolioUpdated}
+          />
+        )}
       </main>
     </div>
   );

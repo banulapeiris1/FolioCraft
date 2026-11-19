@@ -1,6 +1,186 @@
 import { z } from "zod";
 
 /**
+ * System-reserved usernames that cannot be claimed or published (PUB-03).
+ * Includes web routes, system roles, and reserved protocol identifiers.
+ */
+export const RESERVED_USERNAMES = new Set([
+  "admin",
+  "administrator",
+  "root",
+  "system",
+  "sys",
+  "api",
+  "auth",
+  "login",
+  "signin",
+  "register",
+  "signup",
+  "logout",
+  "signout",
+  "dashboard",
+  "portfolio",
+  "portfolios",
+  "project",
+  "projects",
+  "skill",
+  "skills",
+  "experience",
+  "experiences",
+  "education",
+  "cv",
+  "cv-parser",
+  "preview",
+  "template",
+  "templates",
+  "u",
+  "user",
+  "users",
+  "settings",
+  "profile",
+  "public",
+  "static",
+  "assets",
+  "help",
+  "support",
+  "terms",
+  "privacy",
+  "about",
+  "contact",
+  "null",
+  "undefined",
+  "status",
+  "health",
+  "test",
+  "publish",
+  "unpublish",
+]);
+
+/**
+ * Supported portfolio templates in FolioCraft (PUB-03).
+ */
+export const SUPPORTED_TEMPLATES = new Set([
+  "modern",
+  "minimal",
+  "professional",
+]);
+
+export interface UsernameValidationResult {
+  isValid: boolean;
+  normalizedUsername: string;
+  error?: string;
+  isReserved?: boolean;
+}
+
+/**
+ * Validates and normalizes public portfolio usernames (PUB-03).
+ * Enforces length (3-50 chars), allowed character set, and reserved word checks.
+ */
+export function validateUsername(
+  rawUsername: unknown
+): UsernameValidationResult {
+  if (!rawUsername || typeof rawUsername !== "string") {
+    return {
+      isValid: false,
+      normalizedUsername: "",
+      error: "Username is required",
+    };
+  }
+
+  const trimmed = rawUsername.trim();
+  const normalized = trimmed.toLowerCase();
+
+  if (!trimmed) {
+    return {
+      isValid: false,
+      normalizedUsername: "",
+      error: "Username is required",
+    };
+  }
+
+  if (RESERVED_USERNAMES.has(normalized)) {
+    return {
+      isValid: false,
+      normalizedUsername: normalized,
+      isReserved: true,
+      error: `Username '${normalized}' is reserved for system use`,
+    };
+  }
+
+  if (trimmed.length < 3) {
+    return {
+      isValid: false,
+      normalizedUsername: normalized,
+      error: "Username must be at least 3 characters long",
+    };
+  }
+
+  if (trimmed.length > 50) {
+    return {
+      isValid: false,
+      normalizedUsername: normalized,
+      error: "Username cannot exceed 50 characters",
+    };
+  }
+
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+    return {
+      isValid: false,
+      normalizedUsername: normalized,
+      error:
+        "Username can only contain alphanumeric characters, hyphens, and underscores",
+    };
+  }
+
+  return {
+    isValid: true,
+    normalizedUsername: normalized,
+  };
+}
+
+/**
+ * Zod username field backed by the shared validateUsername() rules (PUB-06D / D5).
+ * Used by portfolio create and update so they accept exactly the usernames that
+ * check-username and publish accept. Outputs the normalized (trimmed, lowercased) value.
+ */
+const usernameField = z
+  .string({ message: "Username is required" })
+  .superRefine((value, ctx) => {
+    const result = validateUsername(value);
+    if (!result.isValid) {
+      ctx.addIssue({
+        code: "custom",
+        message: result.error || "Invalid username",
+      });
+    }
+  })
+  .transform((value) => value.trim().toLowerCase());
+
+/**
+ * Publishing state fields that only POST /api/portfolios/:id/publish and
+ * /unpublish may change (PUB-06D / D6).
+ */
+export const PROTECTED_PUBLISHING_FIELDS = [
+  "published",
+  "publishedAt",
+  "published_at",
+] as const;
+
+export const PROTECTED_PUBLISHING_FIELD_MESSAGE =
+  "Publishing state cannot be set through this endpoint. Use POST /api/portfolios/:id/publish or POST /api/portfolios/:id/unpublish.";
+
+/**
+ * Returns the first protected publishing field present in a request body, or null.
+ */
+export function findProtectedPublishingField(body: unknown): string | null {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  for (const field of PROTECTED_PUBLISHING_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(body, field)) return field;
+  }
+  return null;
+}
+
+/**
  * Validation schema for user registration.
  * Ensures name is non-empty, email is properly formatted and lowercased,
  * and password meets reasonable length requirements.
@@ -52,15 +232,7 @@ export const createPortfolioSchema = z.object({
     .trim()
     .min(1, "Title is required")
     .max(100, "Title cannot exceed 100 characters"),
-  username: z
-    .string({ message: "Username is required" })
-    .trim()
-    .min(1, "Username is required")
-    .max(50, "Username cannot exceed 50 characters")
-    .regex(
-      /^[a-zA-Z0-9_-]+$/,
-      "Username can only contain alphanumeric characters, hyphens, and underscores"
-    ),
+  username: usernameField,
   email: z
     .string()
     .trim()
@@ -93,7 +265,8 @@ export const createPortfolioSchema = z.object({
     .trim()
     .max(50, "Template name cannot exceed 50 characters")
     .optional(),
-  published: z.boolean().optional(),
+  // `published` intentionally absent: publishing state is managed only by the
+  // dedicated publish/unpublish endpoints (PUB-06D / D6).
 });
 
 /**
@@ -113,16 +286,7 @@ export const updatePortfolioSchema = z.object({
     .min(1, "Title cannot be empty")
     .max(100, "Title cannot exceed 100 characters")
     .optional(),
-  username: z
-    .string()
-    .trim()
-    .min(1, "Username cannot be empty")
-    .max(50, "Username cannot exceed 50 characters")
-    .regex(
-      /^[a-zA-Z0-9_-]+$/,
-      "Username can only contain alphanumeric characters, hyphens, and underscores"
-    )
-    .optional(),
+  username: usernameField.optional(),
   email: z
     .string()
     .trim()
@@ -155,7 +319,8 @@ export const updatePortfolioSchema = z.object({
     .trim()
     .max(50, "Template name cannot exceed 50 characters")
     .optional(),
-  published: z.boolean().optional(),
+  // `published` intentionally absent: publishing state is managed only by the
+  // dedicated publish/unpublish endpoints (PUB-06D / D6).
 });
 
 /**

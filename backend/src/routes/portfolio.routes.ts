@@ -17,6 +17,11 @@ router.post("/", authMiddleware, (req, res, next) =>
   portfolioController.createPortfolio(req, res, next)
 );
 
+// GET /api/portfolios/check-username/:username - Check username availability (authenticated, PUB-03)
+router.get("/check-username/:username", authMiddleware, (req, res, next) =>
+  portfolioController.checkUsername(req, res, next)
+);
+
 // GET /api/portfolios/:id - Get a single portfolio by ID (authenticated, ownership-aware)
 router.get("/:id", authMiddleware, (req, res, next) =>
   portfolioController.getPortfolioById(req, res, next)
@@ -30,6 +35,16 @@ router.put("/:id", authMiddleware, (req, res, next) =>
 // DELETE /api/portfolios/:id - Delete an existing portfolio (authenticated, ownership-aware)
 router.delete("/:id", authMiddleware, (req, res, next) =>
   portfolioController.deletePortfolio(req, res, next)
+);
+
+// POST /api/portfolios/:id/publish - Publish a portfolio (authenticated, ownership-aware, PUB-03)
+router.post("/:id/publish", authMiddleware, (req, res, next) =>
+  portfolioController.publishPortfolio(req, res, next)
+);
+
+// POST /api/portfolios/:id/unpublish - Unpublish a portfolio (authenticated, ownership-aware, PUB-03)
+router.post("/:id/unpublish", authMiddleware, (req, res, next) =>
+  portfolioController.unpublishPortfolio(req, res, next)
 );
 
 // POST /api/portfolios/:id/projects - Create a new project under portfolio (authenticated)

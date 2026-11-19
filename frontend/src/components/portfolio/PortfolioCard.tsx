@@ -1,12 +1,20 @@
 "use client";
 
-import React from "react";
+import React, { useState, useCallback } from "react";
 import Link from "next/link";
 import { Portfolio } from "@/types/portfolio";
-import { PencilIcon, ExternalLinkIcon } from "@/components/portfolio/PortfolioIcons";
+import {
+  PencilIcon,
+  ExternalLinkIcon,
+  SparklesIcon,
+  CopyIcon,
+  CheckIcon,
+} from "@/components/portfolio/PortfolioIcons";
+import { getPublicPortfolioUrl } from "./PublishModal";
 
 export interface PortfolioCardProps {
   portfolio: Portfolio;
+  onPublishClick?: (portfolio: Portfolio) => void;
 }
 
 const TEMPLATE_NAMES: Record<string, string> = {
@@ -38,9 +46,38 @@ export function formatLastUpdated(dateString: string): string {
   }
 }
 
-export default function PortfolioCard({ portfolio }: PortfolioCardProps) {
+export default function PortfolioCard({
+  portfolio,
+  onPublishClick,
+}: PortfolioCardProps) {
   const templateName = getTemplateDisplayName(portfolio.template);
   const updatedDate = formatLastUpdated(portfolio.updatedAt || portfolio.createdAt);
+  const [copied, setCopied] = useState<boolean>(false);
+
+  const handleCopyUrl = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const url = getPublicPortfolioUrl(portfolio);
+      try {
+        if (navigator?.clipboard?.writeText) {
+          await navigator.clipboard.writeText(url);
+        } else {
+          const textArea = document.createElement("textarea");
+          textArea.value = url;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textArea);
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        // Fallback: silent fail
+      }
+    },
+    [portfolio]
+  );
 
   return (
     <article className="bg-white rounded-2xl border border-[#eae6f5] hover:border-[#dcd3f8] p-5 sm:p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group">
@@ -97,25 +134,78 @@ export default function PortfolioCard({ portfolio }: PortfolioCardProps) {
         <div className="mt-4 text-[11px] text-[#94a3b8] font-medium flex items-center gap-1">
           <span>{updatedDate}</span>
         </div>
+
+        {/* Live Public URL preview banner (when Published) */}
+        {portfolio.published && (
+          <div
+            data-testid="card-public-url-banner"
+            className="mt-3.5 py-2 px-3 rounded-xl bg-emerald-50/70 border border-emerald-200/70 flex items-center justify-between gap-2 text-xs"
+          >
+            <Link
+              href={`/u/${portfolio.username}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-emerald-800 hover:text-emerald-950 hover:underline truncate flex items-center gap-1.5 flex-1"
+              title="Open public portfolio"
+            >
+              <span className="truncate">/u/{portfolio.username}</span>
+              <ExternalLinkIcon className="w-3 h-3 flex-shrink-0 text-emerald-600" />
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleCopyUrl}
+              data-testid={`card-copy-url-${portfolio.id}`}
+              className="text-emerald-700 hover:text-emerald-950 p-1 rounded-md transition-colors cursor-pointer flex-shrink-0"
+              title="Copy public URL"
+            >
+              {copied ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800">
+                  <CheckIcon className="w-3.5 h-3.5" />
+                  <span>Copied</span>
+                </span>
+              ) : (
+                <CopyIcon className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Card Actions */}
-      <div className="mt-6 pt-4 border-t border-[#f1edf9] flex items-center justify-between gap-3">
-        <Link
-          href={`/portfolio/edit/${portfolio.id}`}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-[#6e56cf] bg-[#f3f0ff] hover:bg-[#eae4fc] border border-[#dcd3f8] transition-all hover:shadow-xs active:scale-[0.98] min-h-[38px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6e56cf]"
-        >
-          <PencilIcon className="w-3.5 h-3.5" />
-          <span>Edit</span>
-        </Link>
+      <div className="mt-6 pt-4 border-t border-[#f1edf9] flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/portfolio/edit/${portfolio.id}`}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#6e56cf] bg-[#f3f0ff] hover:bg-[#eae4fc] border border-[#dcd3f8] transition-all hover:shadow-xs active:scale-[0.98] min-h-[38px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6e56cf]"
+          >
+            <PencilIcon className="w-3.5 h-3.5" />
+            <span>Edit</span>
+          </Link>
 
-        <Link
-          href={`/portfolio/preview?id=${portfolio.id}`}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-[#475569] bg-[#f8f7fd] hover:bg-[#ede9f8] hover:text-[#0f172a] border border-[#eae6f5] transition-all hover:shadow-xs active:scale-[0.98] min-h-[38px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6e56cf]"
+          <Link
+            href={`/portfolio/preview?id=${portfolio.id}`}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#475569] bg-[#f8f7fd] hover:bg-[#ede9f8] hover:text-[#0f172a] border border-[#eae6f5] transition-all hover:shadow-xs active:scale-[0.98] min-h-[38px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6e56cf]"
+          >
+            <ExternalLinkIcon className="w-3.5 h-3.5" />
+            <span>Preview</span>
+          </Link>
+        </div>
+
+        {/* Publish / Manage Live Action */}
+        <button
+          type="button"
+          onClick={() => onPublishClick?.(portfolio)}
+          data-testid={`card-publish-btn-${portfolio.id}`}
+          className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all min-h-[38px] cursor-pointer focus-visible:outline-none focus-visible:ring-2 ${
+            portfolio.published
+              ? "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 focus-visible:ring-emerald-500"
+              : "text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-xs shadow-[#6e56cf]/25 focus-visible:ring-[#6e56cf]"
+          }`}
         >
-          <ExternalLinkIcon className="w-3.5 h-3.5" />
-          <span>Preview</span>
-        </Link>
+          <SparklesIcon className="w-3.5 h-3.5" />
+          <span>{portfolio.published ? "Manage Live" : "Publish"}</span>
+        </button>
       </div>
     </article>
   );
