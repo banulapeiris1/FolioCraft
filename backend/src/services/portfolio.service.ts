@@ -8,6 +8,7 @@ import {
 } from "../utils/validation";
 import type {
   Portfolio,
+  PortfolioListItem,
   CreatePortfolioDto,
   UpdatePortfolioDto,
   DeletePortfolioResult,
@@ -56,6 +57,12 @@ interface PortfolioDbRow {
   published_at: Date | null;
   created_at: Date;
   updated_at: Date;
+}
+
+interface PortfolioListDbRow extends PortfolioDbRow {
+  project_count: number | string;
+  skill_count: number | string;
+  experience_count: number | string;
 }
 
 function mapRowToPortfolio(row: PortfolioDbRow): Portfolio {
@@ -187,20 +194,32 @@ export class PortfolioService {
    * Retrieves all portfolios owned by a specific user.
    * Ordered by updated_at DESC.
    */
-  async getPortfoliosByUserId(userId: string): Promise<Portfolio[]> {
+  async getPortfoliosByUserId(userId: string): Promise<PortfolioListItem[]> {
     if (!userId || !UUID_REGEX.test(userId)) {
       throw new AppError("Invalid user ID", 400);
     }
 
-    const result = await pool.query<PortfolioDbRow>(
-      `SELECT ${PORTFOLIO_COLUMNS}
+    // DASH-03: read-only section counts for dashboard statistics.
+    // Correlated COUNTs use the existing *_portfolio_id indexes; no migration.
+    const result = await pool.query<PortfolioListDbRow>(
+      `SELECT ${PORTFOLIO_COLUMNS},
+              (SELECT COUNT(*) FROM projects pr WHERE pr.portfolio_id = portfolios.id)::int AS project_count,
+              (SELECT COUNT(*) FROM skills sk WHERE sk.portfolio_id = portfolios.id)::int AS skill_count,
+              (SELECT COUNT(*) FROM experience ex WHERE ex.portfolio_id = portfolios.id)::int AS experience_count
        FROM portfolios
        WHERE user_id = $1
        ORDER BY updated_at DESC`,
       [userId]
     );
 
-    return result.rows.map(mapRowToPortfolio);
+    return result.rows.map((row) => ({
+      ...mapRowToPortfolio(row),
+      sectionCounts: {
+        projects: Number(row.project_count) || 0,
+        skills: Number(row.skill_count) || 0,
+        experience: Number(row.experience_count) || 0,
+      },
+    }));
   }
 
   /**

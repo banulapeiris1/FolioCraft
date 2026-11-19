@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useId } from "react";
+import React, { useState, useEffect, useCallback, useId, useRef } from "react";
+import { useModalFocus } from "@/lib/useModalFocus";
 import Link from "next/link";
 import { Portfolio } from "@/types/portfolio";
 import {
@@ -65,6 +66,18 @@ export function mergePublishingResult(
   return { ...current, ...result };
 }
 
+/**
+ * True when the modal is being pointed at a different portfolio, which is the
+ * only case where its transient feedback should be cleared (post-QA fix).
+ * An updated copy of the same portfolio (same id) keeps the feedback.
+ */
+export function isDifferentPortfolio(
+  previous: Pick<Portfolio, "id">,
+  next: Pick<Portfolio, "id">
+): boolean {
+  return previous.id !== next.id;
+}
+
 export default function PublishModal({
   isOpen,
   onClose,
@@ -73,6 +86,11 @@ export default function PublishModal({
   onPortfolioUpdated,
 }: PublishModalProps): React.JSX.Element | null {
   const modalTitleId = useId();
+  const usernameHelpId = useId();
+  // DASH-06: focus management only (initial focus, Tab containment, scroll
+  // lock, focus restore). Publishing behaviour is unchanged.
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalFocus(modalRef, isOpen);
 
   // Internal portfolio state to reflect updates dynamically
   const [currentPortfolio, setCurrentPortfolio] = useState<Portfolio>(portfolio);
@@ -92,17 +110,25 @@ export default function PublishModal({
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
-  // Synchronize incoming portfolio prop changes
+  // Synchronize incoming portfolio prop changes.
+  // Post-QA fix (Phase 11): parents echo the portfolio this modal just
+  // published/unpublished back as a new object via onPortfolioUpdated. Data is
+  // always synced, but transient feedback (success/error messages, unpublish
+  // confirmation, username status) is reset only when switching to a
+  // different portfolio; otherwise the success message was wiped immediately.
   const [prevPortfolio, setPrevPortfolio] = useState(portfolio);
   if (portfolio !== prevPortfolio) {
+    const switchedPortfolio = isDifferentPortfolio(prevPortfolio, portfolio);
     setPrevPortfolio(portfolio);
     setCurrentPortfolio(portfolio);
     setCandidateUsername(portfolio.username || "");
-    setUsernameStatus("available");
-    setUsernameMessage("");
-    setActionError(null);
-    setActionSuccess(null);
-    setShowUnpublishConfirm(false);
+    if (switchedPortfolio) {
+      setUsernameStatus("available");
+      setUsernameMessage("");
+      setActionError(null);
+      setActionSuccess(null);
+      setShowUnpublishConfirm(false);
+    }
   }
 
   // Handle ESC key press to close modal
@@ -270,6 +296,7 @@ export default function PublishModal({
 
   return (
     <div
+      ref={modalRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby={modalTitleId}
@@ -303,7 +330,7 @@ export default function PublishModal({
             type="button"
             onClick={onClose}
             aria-label="Close modal"
-            className="p-2 text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#f8f7fd] rounded-xl transition-colors cursor-pointer"
+            className="p-2 text-[#64748b] hover:text-[#0f172a] hover:bg-[#f8f7fd] rounded-xl transition-colors cursor-pointer"
           >
             <XIcon className="w-5 h-5" />
           </button>
@@ -356,7 +383,7 @@ export default function PublishModal({
                     {isPublished ? "Published (Live)" : "Draft (Unpublished)"}
                   </span>
                 </div>
-                <p className="text-[11px] text-[#64748b] mt-0.5">
+                <p className="text-[11px] text-[#475569] mt-0.5">
                   {isPublished
                     ? "Your portfolio is live and accessible to anyone with your link."
                     : "Your portfolio is private. Only you can view and edit it."}
@@ -433,7 +460,7 @@ export default function PublishModal({
               >
                 Public Username Handle
               </label>
-              <span className="text-[11px] font-mono text-[#94a3b8]">
+              <span className="text-[11px] font-mono text-[#64748b]">
                 /u/{candidateUsername || "..."}
               </span>
             </div>
@@ -447,21 +474,39 @@ export default function PublishModal({
                   : "border-[#eae6f5] focus-within:border-[#6e56cf] focus-within:ring-2 focus-within:ring-[#6e56cf]/20"
               }`}
             >
-              <span className="px-3.5 py-2.5 text-xs font-mono text-[#64748b] bg-[#f4f2fa] border-r border-[#eae6f5] select-none">
+              <span className="px-3.5 py-2.5 text-xs font-mono text-[#475569] bg-[#f4f2fa] border-r border-[#eae6f5] select-none">
                 /u/
               </span>
+              {/* DASH-05: read-only. Publishing always uses the saved username;
+                  it is changed in the portfolio editor, never here. */}
               <input
                 id="publish-modal-username"
                 type="text"
-                disabled={isPublishing || isUnpublishing}
+                readOnly
+                aria-readonly="true"
+                aria-describedby={usernameHelpId}
+                data-testid="publish-modal-username"
                 value={candidateUsername}
-                onChange={(e) =>
-                  setCandidateUsername(e.target.value.toLowerCase().trim())
-                }
                 placeholder="yourhandle"
-                className="flex-1 px-3.5 py-2.5 text-sm text-[#0f172a] placeholder-[#94a3b8] bg-transparent focus:outline-none disabled:opacity-50 font-mono"
+                className="flex-1 min-w-0 px-3.5 py-2.5 text-sm text-[#0f172a] placeholder-[#94a3b8] bg-transparent focus:outline-none font-mono cursor-default"
               />
             </div>
+
+            <p
+              id={usernameHelpId}
+              data-testid="username-managed-in-editor"
+              className="text-[11px] text-[#64748b] leading-relaxed"
+            >
+              Your username is managed in the portfolio editor.{" "}
+              <Link
+                href={`/portfolio/edit/${encodeURIComponent(currentPortfolio.id)}`}
+                onClick={onClose}
+                data-testid="edit-username-link"
+                className="font-semibold text-[#6e56cf] hover:text-[#5d46be] hover:underline rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6e56cf]"
+              >
+                Change username in editor
+              </Link>
+            </p>
 
             {/* Username feedback message */}
             {usernameMessage && (

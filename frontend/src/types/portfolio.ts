@@ -20,6 +20,15 @@ export interface PortfolioFormData {
 }
 
 /**
+ * Read-only content counts returned by GET /api/portfolios (DASH-03).
+ */
+export interface PortfolioSectionCounts {
+  projects: number;
+  skills: number;
+  experience: number;
+}
+
+/**
  * Full portfolio entity model returned from the backend.
  */
 export interface Portfolio {
@@ -38,6 +47,8 @@ export interface Portfolio {
   published: boolean;
   publishedAt?: string | null;
   publicUrl?: string | null;
+  /** Present only on items from the list endpoint (DASH-03). */
+  sectionCounts?: PortfolioSectionCounts;
   createdAt: string;
   updatedAt: string;
 }
@@ -83,6 +94,14 @@ export interface UnpublishPortfolioResponse {
   success: boolean;
   message: string;
   portfolio: Portfolio;
+}
+
+/**
+ * API response format for portfolio deletion (DASH-05).
+ */
+export interface DeletePortfolioResponse {
+  success: boolean;
+  id: string;
 }
 
 import type { PortfolioViewData } from "../templates/types";

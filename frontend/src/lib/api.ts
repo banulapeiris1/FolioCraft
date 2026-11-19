@@ -160,6 +160,7 @@ import type {
   CheckUsernameResponse,
   PublishPortfolioResponse,
   UnpublishPortfolioResponse,
+  DeletePortfolioResponse,
 } from "../types/portfolio";
 
 
@@ -208,6 +209,23 @@ export async function updatePortfolio(
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Permanently deletes a portfolio owned by the authenticated user (DELETE /api/portfolios/:id) (DASH-05).
+ * The backend verifies ownership (403 for other users, 404 if missing) and
+ * cascades the delete to the portfolio's content.
+ */
+export async function deletePortfolio(
+  id: string,
+  token: string
+): Promise<DeletePortfolioResponse> {
+  return request<DeletePortfolioResponse>(`/api/portfolios/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 }
 

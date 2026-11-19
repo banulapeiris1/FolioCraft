@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AuthLayout from "@/components/auth/AuthLayout";
@@ -9,6 +9,7 @@ import AuthInput from "@/components/auth/AuthInput";
 import PasswordInput from "@/components/auth/PasswordInput";
 import SocialAuthButton from "@/components/auth/SocialAuthButton";
 import AuthDivider from "@/components/auth/AuthDivider";
+import SessionExpiredNotice from "@/components/auth/SessionExpiredNotice";
 import { MailIcon, KeyIcon, AlertCircleIcon } from "@/components/auth/AuthIcons";
 import { useAuth } from "@/context/AuthContext";
 import { loginUser, ApiError } from "@/lib/api";
@@ -98,6 +99,11 @@ export default function LoginPage() {
 
         {/* Divider */}
         <AuthDivider label="OR CONTINUE WITH EMAIL" />
+
+        {/* Session Expired Notice (DASH-02) */}
+        <Suspense fallback={null}>
+          <SessionExpiredNotice />
+        </Suspense>
 
         {/* Server Error Banner */}
         {serverError && (
