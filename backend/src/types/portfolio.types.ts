@@ -33,6 +33,21 @@ export interface Portfolio {
 }
 
 /**
+ * Read-only content counts for a portfolio (DASH-03).
+ * Returned only by GET /api/portfolios; additive and backward compatible.
+ */
+export interface PortfolioSectionCounts {
+  projects: number;
+  skills: number;
+  experience: number;
+}
+
+/** Portfolio as returned by the list endpoint (GET /api/portfolios). */
+export interface PortfolioListItem extends Portfolio {
+  sectionCounts: PortfolioSectionCounts;
+}
+
+/**
  * Data payload required/optional when creating a new portfolio.
  */
 export interface CreatePortfolioDto {

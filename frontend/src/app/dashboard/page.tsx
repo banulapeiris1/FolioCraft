@@ -1,34 +1,63 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { FolioCraftLogo } from "@/components/landing/icons";
-import { SparklesIcon, ShieldCheckIcon } from "@/components/auth/AuthIcons";
-import {
-  FolderGit2Icon,
-  AlertCircleIcon,
-  PlusIcon,
-} from "@/components/portfolio/PortfolioIcons";
-import PortfolioCard, {
-  PortfolioCardSkeleton,
-} from "@/components/portfolio/PortfolioCard";
+import PortfolioCard from "@/components/portfolio/PortfolioCard";
 import PublishModal from "@/components/portfolio/PublishModal";
-import { getPortfolios, ApiError } from "@/lib/api";
-import { Portfolio } from "@/types/portfolio";
+import DashboardErrorState from "@/components/dashboard/DashboardErrorState";
+import PortfolioGridSkeleton from "@/components/dashboard/PortfolioGridSkeleton";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import DashboardStats, { DashboardStatsSkeleton } from "@/components/dashboard/DashboardStats";
+import DashboardEmptyState from "@/components/dashboard/DashboardEmptyState";
+import DashboardNotice from "@/components/dashboard/DashboardNotice";
+import DeletePortfolioDialog from "@/components/portfolio/DeletePortfolioDialog";
+import { deletePortfolio, getPortfolios } from "@/lib/api";
+import {
+  classifyApiError,
+  performPortfolioDelete,
+  computeDashboardStats,
+  getFirstName,
+  type ClassifiedApiError,
+} from "@/lib/dashboard";
+import { LOGIN_SESSION_EXPIRED_PATH } from "@/lib/authSession";
+import { Portfolio, PortfoliosResponse } from "@/types/portfolio";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, token, isLoading, isAuthenticated, logout } = useAuth();
-  const [showPortfolioNotice, setShowPortfolioNotice] = useState(false);
+  const {
+    user,
+    token,
+    isLoading,
+    isAuthenticated,
+    isServiceUnavailable,
+    logout,
+    retrySession,
+  } = useAuth();
+  // DASH-02: set when the API rejects the token mid-session (401)
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   // Portfolio state
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [isLoadingPortfolios, setIsLoadingPortfolios] = useState(true);
-  const [portfoliosError, setPortfoliosError] = useState<string | null>(null);
+  const [portfoliosError, setPortfoliosError] = useState<ClassifiedApiError | null>(null);
   const [selectedPortfolioForPublish, setSelectedPortfolioForPublish] =
     useState<Portfolio | null>(null);
+
+  // DASH-05: deletion state
+  const [deleteTarget, setDeleteTarget] = useState<Portfolio | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const deleteInFlightRef = useRef(false);
+
+  // DASH-03: summary statistics derived from the single portfolio list
+  // response; publish/unpublish updates flow through handlePortfolioUpdated.
+  const stats = useMemo(() => computeDashboardStats(portfolios), [portfolios]);
+  const isEmptyWorkspace =
+    !isLoadingPortfolios && !portfoliosError && portfolios.length === 0;
 
   const handlePortfolioUpdated = (updatedPortfolio: Portfolio) => {
     setPortfolios((prev) =>
@@ -39,62 +68,136 @@ export default function DashboardPage() {
     }
   };
 
-  // Protect route: Redirect unauthenticated users to /login
+  // Protect route: Redirect unauthenticated users to /login.
+  // DASH-02: an unreachable API is not a logout, so stay and show the
+  // service-unavailable state; an expired session carries a reason.
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace("/login");
-    }
-  }, [isLoading, isAuthenticated, router]);
+    if (isLoading || isAuthenticated || isServiceUnavailable) return;
+    router.replace(sessionExpired ? LOGIN_SESSION_EXPIRED_PATH : "/login");
+  }, [isLoading, isAuthenticated, isServiceUnavailable, sessionExpired, router]);
+
+  /**
+   * Shared result handlers for the initial fetch and Retry (DASH-02).
+   */
+  const handlePortfoliosLoaded = useCallback((data: PortfoliosResponse) => {
+    setPortfolios(data.portfolios || []);
+    setPortfoliosError(null);
+    setIsLoadingPortfolios(false);
+  }, []);
+
+  const handlePortfoliosFailed = useCallback(
+    (err: unknown) => {
+      const classified = classifyApiError(err);
+      if (classified.kind === "auth") {
+        // Token rejected: end the session; the route guard redirects
+        // to /login with the session-expired notice.
+        setSessionExpired(true);
+        logout();
+        return;
+      }
+      setPortfoliosError(classified);
+      setIsLoadingPortfolios(false);
+    },
+    [logout]
+  );
 
   // Fetch portfolios on authentication
   useEffect(() => {
-    let isMounted = true;
     if (!token) return;
-
-    getPortfolios(token)
-      .then((data) => {
-        if (isMounted) {
-          setPortfolios(data.portfolios || []);
-          setPortfoliosError(null);
-        }
-      })
-      .catch((err) => {
-        if (isMounted) {
-          if (err instanceof ApiError) {
-            setPortfoliosError(err.message || "Unable to load your portfolios.");
-          } else {
-            setPortfoliosError("Something went wrong while loading your portfolios.");
-          }
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoadingPortfolios(false);
-        }
-      });
-
+    let active = true;
+    getPortfolios(token).then(
+      (data) => {
+        if (active) handlePortfoliosLoaded(data);
+      },
+      (err: unknown) => {
+        if (active) handlePortfoliosFailed(err);
+      }
+    );
     return () => {
-      isMounted = false;
+      active = false;
     };
-  }, [token]);
+  }, [token, handlePortfoliosLoaded, handlePortfoliosFailed]);
 
-  const handleRetry = async () => {
+  const handleRetry = () => {
     if (!token) return;
     setIsLoadingPortfolios(true);
     setPortfoliosError(null);
-    try {
-      const data = await getPortfolios(token);
-      setPortfolios(data.portfolios || []);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setPortfoliosError(err.message || "Unable to load your portfolios.");
-      } else {
-        setPortfoliosError("Something went wrong while loading your portfolios.");
-      }
-    } finally {
-      setIsLoadingPortfolios(false);
+    getPortfolios(token).then(handlePortfoliosLoaded, handlePortfoliosFailed);
+  };
+
+  // DASH-05: auto-dismiss action feedback after a few seconds
+  useEffect(() => {
+    if (!notice) return;
+    const timeoutId = setTimeout(() => setNotice(null), 6000);
+    return () => clearTimeout(timeoutId);
+  }, [notice]);
+
+  /** Removes a portfolio locally; stats update via the derived useMemo. */
+  const removePortfolioLocally = (id: string) => {
+    setPortfolios((prev) => prev.filter((p) => p.id !== id));
+    setSelectedPortfolioForPublish((prev) => (prev?.id === id ? null : prev));
+  };
+
+  const openDeleteDialog = (portfolio: Portfolio) => {
+    setDeleteError(null);
+    setDeleteTarget(portfolio);
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteTarget(null);
+    setDeleteError(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    // No repeated submissions: the ref blocks double clicks within one render,
+    // isDeleting disables the dialog's buttons for subsequent renders.
+    if (!deleteTarget || !token || deleteInFlightRef.current) return;
+    deleteInFlightRef.current = true;
+    const target = deleteTarget;
+    setIsDeleting(true);
+    setDeleteError(null);
+    const outcome = await performPortfolioDelete(target.id, token, deletePortfolio);
+    deleteInFlightRef.current = false;
+    setIsDeleting(false);
+
+    switch (outcome.kind) {
+      case "deleted":
+        removePortfolioLocally(target.id);
+        closeDeleteDialog();
+        setNotice(`"${target.title}" was permanently deleted.`);
+        break;
+      case "already-deleted":
+        removePortfolioLocally(target.id);
+        closeDeleteDialog();
+        setNotice(`"${target.title}" had already been deleted.`);
+        break;
+      case "session-expired":
+        // Same path as DASH-02: end the session; the guard redirects with a notice
+        closeDeleteDialog();
+        setSessionExpired(true);
+        logout();
+        break;
+      case "error":
+        setDeleteError(outcome.message);
+        break;
     }
   };
+
+  // DASH-02: stored session exists but the API could not be reached
+  if (!isLoading && !isAuthenticated && isServiceUnavailable) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-8 bg-[#faf9fd] px-4">
+        <FolioCraftLogo className="w-12 h-12 rounded-xl shadow-md" />
+        <div className="w-full max-w-lg">
+          <DashboardErrorState
+            kind="network"
+            context="session"
+            onRetry={() => void retrySession()}
+          />
+        </div>
+      </div>
+    );
+  }
 
   // Loading state during auth restoration to prevent unauthenticated flash
   if (isLoading || !isAuthenticated || !user) {
@@ -106,7 +209,7 @@ export default function DashboardPage() {
             <h2 className="text-sm font-semibold text-[#0f172a] tracking-tight">
               Loading your workspace...
             </h2>
-            <p className="text-xs text-[#94a3b8] mt-0.5">
+            <p className="text-xs text-[#64748b] mt-0.5">
               Verifying credentials
             </p>
           </div>
@@ -156,152 +259,50 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Authenticated Workspace Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-        {/* Welcome Banner */}
-        <div className="bg-white rounded-3xl border border-[#eae6f5] shadow-xl shadow-[#6e56cf]/5 p-6 sm:p-10 relative overflow-hidden">
-          {/* Ambient Glow */}
-          <div
-            className="absolute -top-20 -right-20 w-80 h-80 bg-[#6e56cf]/10 rounded-full blur-3xl pointer-events-none"
-            aria-hidden="true"
-          />
-
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f3f0ff] border border-[#dcd3f8] text-xs font-semibold text-[#6e56cf] uppercase tracking-wider mb-4">
-              <SparklesIcon className="w-3.5 h-3.5" />
-              <span>Authentication Verified</span>
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#0f172a]">
-              Welcome, {user.name} 👋
-            </h1>
-
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[#475569]">
-              <span className="font-mono bg-[#f8f7fd] border border-[#eae6f5] px-2.5 py-1 rounded-lg text-xs text-[#0f172a]">
-                {user.email}
-              </span>
-              <span className="inline-flex items-center gap-1 text-xs text-[#10b981] font-semibold bg-[#ecfdf5] border border-[#a7f3d0] px-2.5 py-0.5 rounded-full">
-                <ShieldCheckIcon className="w-3.5 h-3.5" />
-                Session Active
-              </span>
-            </div>
-
-            <p className="mt-5 text-base text-[#475569] max-w-xl leading-relaxed">
-              Your developer account is ready. Turn your CV into an interactive
-              online portfolio with curated themes and automatic skill extraction.
-            </p>
-
-            {/* Action Buttons */}
-            <div className="mt-8 flex flex-col sm:flex-row items-center gap-3.5">
-              <Link
-                href="/portfolio/create"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-md shadow-[#6e56cf]/25 hover:shadow-lg hover:shadow-[#6e56cf]/35 transition-all active:scale-[0.98]"
-              >
-                <span>+ Create Portfolio</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-[#475569] bg-[#f8f7fd] hover:bg-[#f1edf9] border border-[#eae6f5] transition-colors cursor-pointer"
-              >
-                <span>Sign Out</span>
-              </button>
-            </div>
-
-            {/* Phase Notice Modal / Toast */}
-            {showPortfolioNotice && (
-              <div className="mt-6 p-4 rounded-2xl bg-[#f3f0ff] border border-[#dcd3f8] text-xs text-[#475569] flex items-start justify-between gap-4 animate-fadeIn">
-                <div>
-                  <h4 className="font-bold text-[#0f172a] mb-1">
-                    🚀 Next Phase: CV-to-Portfolio Builder
-                  </h4>
-                  <p>
-                    Authentication is active. The CV parsing engine, template
-                    customizer, and public portfolio publishing pipeline are part
-                    of the upcoming portfolio builder milestones.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowPortfolioNotice(false)}
-                  className="font-bold text-[#6e56cf] hover:text-[#5d46be] cursor-pointer"
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        {/* Workspace Header & Summary Stats (DASH-03) */}
+        <DashboardHeader
+          firstName={getFirstName(user.name)}
+          showCreateAction={!isEmptyWorkspace}
+        >
+          {isLoadingPortfolios ? (
+            <DashboardStatsSkeleton />
+          ) : !portfoliosError && portfolios.length > 0 ? (
+            <DashboardStats stats={stats} />
+          ) : null}
+        </DashboardHeader>
 
         {/* Your Portfolios Section */}
-        <section className="mt-8 sm:mt-10">
-          <div className="flex items-center justify-between gap-4 mb-5">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0f172a]">
-                Your Portfolios
-              </h2>
-              <p className="text-xs sm:text-sm text-[#64748b] mt-0.5">
-                Manage, edit, and preview your existing developer portfolios.
-              </p>
-            </div>
-            {!isLoadingPortfolios && !portfoliosError && portfolios.length > 0 && (
-              <Link
-                href="/portfolio/create"
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#6e56cf] bg-[#f3f0ff] hover:bg-[#eae4fc] border border-[#dcd3f8] transition-all hover:shadow-xs active:scale-[0.98]"
-              >
-                <PlusIcon className="w-3.5 h-3.5" />
-                <span>Create Portfolio</span>
-              </Link>
-            )}
+        <section aria-labelledby="portfolios-heading" className="mt-8 sm:mt-10">
+          <div className="mb-5">
+            <h2
+              id="portfolios-heading"
+              tabIndex={-1}
+              className="text-xl sm:text-2xl font-bold tracking-tight text-[#0f172a] focus:outline-none"
+            >
+              Your Portfolios
+            </h2>
+            <p className="text-xs sm:text-sm text-[#64748b] mt-0.5">
+              Manage, edit, and preview your existing developer portfolios.
+            </p>
           </div>
+
+          {/* DASH-05: action feedback (polite live region) */}
+          <DashboardNotice message={notice} onDismiss={() => setNotice(null)} />
 
           {/* Loading Skeleton State */}
           {isLoadingPortfolios ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-              <PortfolioCardSkeleton />
-              <PortfolioCardSkeleton />
-              <PortfolioCardSkeleton />
-            </div>
+            <PortfolioGridSkeleton />
           ) : portfoliosError ? (
-            /* Error State */
-            <div className="bg-white rounded-3xl border border-rose-200 p-8 sm:p-10 shadow-xs text-center max-w-lg mx-auto">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mx-auto mb-4">
-                <AlertCircleIcon className="w-6 h-6" />
-              </div>
-              <h3 className="text-base sm:text-lg font-bold text-[#0f172a] mb-1">
-                Unable to load your portfolios.
-              </h3>
-              <p className="text-sm text-[#64748b] mb-6 leading-relaxed">
-                Something went wrong while loading your portfolios.
-              </p>
-              <button
-                type="button"
-                onClick={() => void handleRetry()}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-xs transition-all active:scale-[0.98] cursor-pointer"
-              >
-                Try Again
-              </button>
-            </div>
+            /* Error State (DASH-02: classified network / server / generic) */
+            <DashboardErrorState
+              kind={portfoliosError.kind}
+              detail={portfoliosError.detail}
+              onRetry={handleRetry}
+            />
           ) : portfolios.length === 0 ? (
-            /* Empty State */
-            <div className="bg-white rounded-3xl border border-dashed border-[#dcd3f8] p-8 sm:p-12 text-center shadow-xs">
-              <div className="w-14 h-14 rounded-2xl bg-[#f3f0ff] border border-[#dcd3f8] flex items-center justify-center text-[#6e56cf] mx-auto mb-4">
-                <FolderGit2Icon className="w-7 h-7" />
-              </div>
-              <h3 className="text-lg font-bold text-[#0f172a] mb-1">
-                No portfolio yet
-              </h3>
-              <p className="text-sm text-[#64748b] max-w-md mx-auto leading-relaxed mb-6">
-                You haven&apos;t created a portfolio yet. Turn your CV into a
-                professional online portfolio.
-              </p>
-              <Link
-                href="/portfolio/create"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-[#6e56cf] hover:bg-[#5d46be] shadow-md shadow-[#6e56cf]/25 hover:shadow-lg hover:shadow-[#6e56cf]/35 transition-all active:scale-[0.98]"
-              >
-                <span>+ Create Portfolio</span>
-              </Link>
-            </div>
+            /* Empty State (DASH-03) */
+            <DashboardEmptyState />
           ) : (
             /* Responsive Grid */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
@@ -310,42 +311,24 @@ export default function DashboardPage() {
                   key={portfolio.id}
                   portfolio={portfolio}
                   onPublishClick={(p) => setSelectedPortfolioForPublish(p)}
+                  onDeleteClick={openDeleteDialog}
                 />
               ))}
             </div>
           )}
         </section>
 
-        {/* System Info Card */}
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-2xl border border-[#eae6f5] p-5 shadow-xs">
-            <span className="text-xs font-semibold text-[#64748b] uppercase tracking-wider">
-              Account ID
-            </span>
-            <p className="mt-1 font-mono text-xs text-[#0f172a] truncate" title={user.id}>
-              {user.id}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-[#eae6f5] p-5 shadow-xs">
-            <span className="text-xs font-semibold text-[#64748b] uppercase tracking-wider">
-              Authentication Method
-            </span>
-            <p className="mt-1 text-xs font-medium text-[#0f172a]">
-              JWT Bearer Session
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-[#eae6f5] p-5 shadow-xs">
-            <span className="text-xs font-semibold text-[#64748b] uppercase tracking-wider">
-              Database Sync
-            </span>
-            <p className="mt-1 text-xs font-medium text-[#10b981] flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-              PostgreSQL Verified
-            </p>
-          </div>
-        </div>
+        {/* DASH-05: Delete confirmation */}
+        {deleteTarget && token && (
+          <DeletePortfolioDialog
+            portfolio={deleteTarget}
+            isDeleting={isDeleting}
+            error={deleteError}
+            onConfirm={() => void handleConfirmDelete()}
+            onCancel={closeDeleteDialog}
+            fallbackFocusId="portfolios-heading"
+          />
+        )}
 
         {/* Publish & Public URL Management Modal */}
         {selectedPortfolioForPublish && token && (
