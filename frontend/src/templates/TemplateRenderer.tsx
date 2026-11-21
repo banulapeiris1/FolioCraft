@@ -1,8 +1,8 @@
 import React from "react";
-import { PortfolioViewData } from "./types";
+import { PortfolioViewData, TemplateProps } from "./types";
 import { getTemplateDefinition } from "./registry";
 
-export interface TemplateRendererProps {
+export interface TemplateRendererProps extends Pick<TemplateProps, "siteNav" | "getProjectHref"> {
   templateId?: string | null;
   data: PortfolioViewData;
   className?: string;
@@ -25,9 +25,18 @@ export function TemplateRenderer({
   templateId,
   data,
   className,
+  siteNav,
+  getProjectHref,
 }: TemplateRendererProps): React.JSX.Element {
   const templateDef = getTemplateDefinition(templateId);
   const TemplateComponent = templateDef.component;
 
-  return <TemplateComponent data={data} className={className} />;
+  return (
+    <TemplateComponent
+      data={data}
+      className={className}
+      siteNav={siteNav}
+      getProjectHref={getProjectHref}
+    />
+  );
 }

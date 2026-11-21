@@ -1,5 +1,6 @@
 import React from "react";
 import { TemplateProps } from "../types";
+import { ProjectTitleLink } from "../site/ProjectTitleLink";
 import {
   MapPinIcon,
   MailIcon,
@@ -114,6 +115,8 @@ function formatDateRange(
 export function TemplateProfessional({
   data,
   className = "",
+  siteNav,
+  getProjectHref,
 }: TemplateProps): React.JSX.Element {
   const currentYear = new Date().getFullYear();
 
@@ -169,47 +172,50 @@ export function TemplateProfessional({
       {/* ========================================================= */}
       {/* 1. Executive Top Navigation Bar */}
       {/* ========================================================= */}
-      <nav
-        aria-label="Executive Portfolio Navigation"
-        className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-6 py-3.5 shadow-2xs"
-      >
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-          <a
-            href="#summary"
-            className="flex items-center gap-2.5 font-bold text-slate-900 tracking-tight hover:text-blue-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-900 focus-visible:ring-offset-2 rounded-sm"
-          >
-            <div className="w-7 h-7 rounded bg-blue-900 text-white flex items-center justify-center text-xs font-semibold flex-shrink-0">
-              <BriefcaseIcon className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-sm font-semibold text-slate-900 truncate max-w-[160px] sm:max-w-none">
-              {data.name || "Professional Portfolio"}
-            </span>
-          </a>
-
-          {navSections.length > 0 && (
-            <div className="hidden sm:flex items-center gap-6 text-xs font-semibold tracking-wide uppercase text-slate-600">
-              {navSections.map((sec) => (
-                <a
-                  key={sec.href}
-                  href={sec.href}
-                  className="hover:text-blue-900 transition-colors py-1 border-b-2 border-transparent hover:border-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-900 focus-visible:ring-offset-2 rounded-sm"
-                >
-                  {sec.label}
-                </a>
-              ))}
-            </div>
-          )}
-
-          {data.email && (
+      {/* Public multi-page mode supplies site navigation; otherwise use in-page anchors. */}
+      {siteNav ?? (
+        <nav
+          aria-label="Executive Portfolio Navigation"
+          className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-6 py-3.5 shadow-2xs"
+        >
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
             <a
-              href={`mailto:${data.email}`}
-              className="px-4 py-1.5 rounded-md text-xs font-semibold text-white bg-blue-900 hover:bg-blue-800 shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-900 focus-visible:ring-offset-2"
+              href="#summary"
+              className="flex items-center gap-2.5 font-bold text-slate-900 tracking-tight hover:text-blue-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-900 focus-visible:ring-offset-2 rounded-sm"
             >
-              Contact
+              <div className="w-7 h-7 rounded bg-blue-900 text-white flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                <BriefcaseIcon className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-sm font-semibold text-slate-900 truncate max-w-[160px] sm:max-w-none">
+                {data.name || "Professional Portfolio"}
+              </span>
             </a>
-          )}
-        </div>
-      </nav>
+
+            {navSections.length > 0 && (
+              <div className="hidden sm:flex items-center gap-6 text-xs font-semibold tracking-wide uppercase text-slate-600">
+                {navSections.map((sec) => (
+                  <a
+                    key={sec.href}
+                    href={sec.href}
+                    className="hover:text-blue-900 transition-colors py-1 border-b-2 border-transparent hover:border-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-900 focus-visible:ring-offset-2 rounded-sm"
+                  >
+                    {sec.label}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {data.email && (
+              <a
+                href={`mailto:${data.email}`}
+                className="px-4 py-1.5 rounded-md text-xs font-semibold text-white bg-blue-900 hover:bg-blue-800 shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-900 focus-visible:ring-offset-2"
+              >
+                Contact
+              </a>
+            )}
+          </div>
+        </nav>
+      )}
 
       <main className="max-w-5xl mx-auto px-6 py-10 sm:py-16 space-y-16 sm:space-y-20">
         {/* ========================================================= */}
@@ -390,7 +396,11 @@ export function TemplateProfessional({
 
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <h3 className="text-base font-bold text-slate-900 break-words">
-                        {project.title}
+                        <ProjectTitleLink
+                          project={project}
+                          getProjectHref={getProjectHref}
+                          className="hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-900 focus-visible:ring-offset-2"
+                        />
                       </h3>
 
                       <div className="flex items-center gap-1 flex-shrink-0">

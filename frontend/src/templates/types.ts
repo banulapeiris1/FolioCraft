@@ -1,3 +1,4 @@
+import type React from "react";
 import { PortfolioFormData, PortfolioTemplateId, SocialLinks } from "@/types/portfolio";
 import { Project } from "@/types/project";
 import { Skill } from "@/types/skill";
@@ -42,6 +43,17 @@ export interface PortfolioViewData {
 export interface TemplateProps {
   data: PortfolioViewData;
   className?: string;
+  /**
+   * Optional site-level navigation (Phase 12 multi-page public portfolio).
+   * When provided it replaces the template's built-in in-page anchor nav.
+   * Live preview omits it, so templates render exactly as before.
+   */
+  siteNav?: React.ReactNode;
+  /**
+   * Optional resolver linking a project card to its detail page.
+   * Returning undefined (or omitting the prop) leaves the card unlinked.
+   */
+  getProjectHref?: (project: Project) => string | undefined;
 }
 
 /**

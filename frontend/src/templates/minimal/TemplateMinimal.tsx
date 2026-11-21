@@ -1,5 +1,6 @@
 import React from "react";
 import { TemplateProps } from "../types";
+import { ProjectTitleLink } from "../site/ProjectTitleLink";
 import {
   MapPinIcon,
   MailIcon,
@@ -110,7 +111,12 @@ function formatDateRange(
  * - Dynamic rendering without placeholder cards or empty sections
  * - Pure presentation component (no external state or side effects)
  */
-export function TemplateMinimal({ data, className = "" }: TemplateProps): React.JSX.Element {
+export function TemplateMinimal({
+  data,
+  className = "",
+  siteNav,
+  getProjectHref,
+}: TemplateProps): React.JSX.Element {
   const currentYear = new Date().getFullYear();
 
   // Experiences: sort current first, then descending by startDate
@@ -147,7 +153,7 @@ export function TemplateMinimal({ data, className = "" }: TemplateProps): React.
     ? Object.entries(data.socialLinks).filter(([, url]) => Boolean(url && url.trim()))
     : [];
 
-  return (
+  const page = (
     <div
       data-testid="template-minimal"
       className={`template-minimal min-h-screen bg-white text-slate-900 font-sans selection:bg-slate-200 selection:text-slate-900 ${className}`}
@@ -300,7 +306,13 @@ export function TemplateMinimal({ data, className = "" }: TemplateProps): React.
                     )}
 
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-base font-semibold text-slate-900 break-words">{project.title}</h3>
+                      <h3 className="text-base font-semibold text-slate-900 break-words">
+                        <ProjectTitleLink
+                          project={project}
+                          getProjectHref={getProjectHref}
+                          className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+                        />
+                      </h3>
 
                       <div className="flex items-center gap-1 flex-shrink-0">
                         {project.githubUrl && (
@@ -400,6 +412,16 @@ export function TemplateMinimal({ data, className = "" }: TemplateProps): React.
         </footer>
       </main>
     </div>
+  );
+
+  // Public multi-page mode only: Minimal has no built-in navigation, so the
+  // site nav is placed above the page. Without it the output is unchanged.
+  if (!siteNav) return page;
+  return (
+    <>
+      {siteNav}
+      {page}
+    </>
   );
 }
 

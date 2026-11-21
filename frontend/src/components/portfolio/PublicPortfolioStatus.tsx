@@ -111,6 +111,61 @@ export function InvalidUsername({ username }: PublicPortfolioStatusProps): React
   );
 }
 
+export interface ProjectNotFoundProps {
+  /** Link back to the portfolio's projects page, when the username is known. */
+  projectsHref?: string;
+}
+
+/**
+ * Branded 404 screen for an unknown project URL (Phase 12).
+ * Wording is identical whether the project, the portfolio, or its published
+ * state is the reason, so it reveals nothing about unpublished portfolios.
+ */
+export function ProjectNotFound({ projectsHref }: ProjectNotFoundProps): React.JSX.Element {
+  return (
+    <div
+      data-testid="project-not-found"
+      className="min-h-screen bg-[#faf9fd] text-[#0f172a] flex flex-col items-center justify-center p-6 selection:bg-[#6E56CF]/20"
+    >
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 p-8 sm:p-10 text-center space-y-6">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-purple-50 text-[#6E56CF] mb-2 mx-auto">
+          <FolioCraftLogo className="w-8 h-8" />
+        </div>
+
+        <div className="space-y-2">
+          <span className="inline-block px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[#6E56CF] bg-purple-50 rounded-full">
+            404 — Project Not Found
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+            Project Unavailable
+          </h1>
+          <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+            This project could not be found. It may have been renamed or removed, or the
+            portfolio is not currently published.
+          </p>
+        </div>
+
+        <div className="pt-2 space-y-3">
+          {projectsHref && (
+            <Link
+              href={projectsHref}
+              className="inline-flex items-center justify-center w-full px-5 py-3 rounded-xl bg-[#6E56CF] hover:bg-[#5b45b2] text-white text-sm font-semibold transition-all shadow-md shadow-purple-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6E56CF] focus-visible:ring-offset-2"
+            >
+              View all projects
+            </Link>
+          )}
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center w-full px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+          >
+            Explore FolioCraft
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Branded error screen when backend API or network connection is unavailable (PUB-04).
  */
