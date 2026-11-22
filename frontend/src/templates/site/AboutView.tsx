@@ -39,7 +39,7 @@ export function AboutView({ data, username }: AboutViewProps): React.JSX.Element
 
   return (
     <div data-testid="about-page" className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12">
-      <div className={`${theme.id === "minimal" ? "lg:col-span-3" : "lg:col-span-2"} min-w-0 space-y-12`}>
+      <div className={`${theme.mainColumn} min-w-0 space-y-12`}>
         <PageHeader theme={theme} eyebrow="About" title={data.name || "About"} subtitle={data.title || undefined}>
           {data.location && (
             <p className={`${theme.muted} inline-flex items-center gap-1.5`}>
@@ -92,7 +92,7 @@ export function AboutView({ data, username }: AboutViewProps): React.JSX.Element
 
       <aside
         aria-label="Profile and contact"
-        className={`${theme.id === "minimal" ? "lg:col-span-3" : ""} min-w-0`}
+        className={`${theme.sideColumn} min-w-0`}
       >
         <div className={`${theme.card} p-6 space-y-6 lg:sticky lg:top-24`}>
           {data.profileImageUrl && (

@@ -7,6 +7,7 @@ import { TemplateModern } from "./modern/TemplateModern";
 import { TemplateProfessional } from "./professional/TemplateProfessional";
 import { TemplateSelector } from "@/components/portfolio/TemplateSelector";
 import { TemplateGallery } from "@/components/portfolio/TemplateGallery";
+import { TEMPLATE_LIST } from "./registry";
 import { PortfolioViewData } from "./types";
 
 const extremeLongData: PortfolioViewData = {
@@ -156,7 +157,7 @@ test("TPL-08: Final Responsive & Accessibility Audit Suite", async (t) => {
     assert.equal(element.props.role, "radiogroup");
 
     const buttons = React.Children.toArray(element.props.children) as React.ReactElement<any>[];
-    assert.equal(buttons.length, 3);
+    assert.equal(buttons.length, TEMPLATE_LIST.length);
 
     buttons.forEach((btn) => {
       assert.equal(btn.props.role, "radio");

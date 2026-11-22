@@ -15,6 +15,11 @@ import {
 } from "@/components/portfolio/PortfolioIcons";
 import { TemplateGallery } from "@/components/portfolio/TemplateGallery";
 import {
+  TemplateCategoryFilter,
+  filterTemplatesByCategory,
+  type TemplateCategoryFilterValue,
+} from "@/components/portfolio/TemplateCategoryFilter";
+import {
   getPortfolio,
   getPortfolios,
   getProjects,
@@ -25,7 +30,7 @@ import {
 } from "@/lib/api";
 import { Portfolio, PortfolioTemplateId } from "@/types/portfolio";
 import { PortfolioViewData } from "@/templates/types";
-import { getTemplateDefinition } from "@/templates/registry";
+import { TEMPLATE_LIST, getTemplateDefinition } from "@/templates/registry";
 
 function TemplatesGalleryContent() {
   const router = useRouter();
@@ -53,6 +58,8 @@ function TemplatesGalleryContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [savingTemplateId, setSavingTemplateId] = useState<PortfolioTemplateId | null>(null);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<TemplateCategoryFilterValue>("all");
+  const visibleTemplates = filterTemplatesByCategory(TEMPLATE_LIST, categoryFilter);
   const [, startTransition] = useTransition();
 
   // Protect route
@@ -245,49 +252,51 @@ function TemplatesGalleryContent() {
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 w-full bg-white/85 backdrop-blur-md border-b border-[#eae6f5]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          {/* Breadcrumb: below sm only the logo (links to the dashboard) and the current page show, so the header never overflows. */}
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/dashboard"
-              className="flex items-center gap-2.5 group"
+              className="flex shrink-0 items-center gap-2.5 group"
               aria-label="FolioCraft Dashboard"
             >
               <FolioCraftLogo className="w-8 h-8 rounded-lg shadow-sm transition-transform group-hover:scale-105" />
-              <span className="text-xl font-bold tracking-tight text-[#0f172a] font-sans">
+              <span className="hidden sm:inline text-xl font-bold tracking-tight text-[#0f172a] font-sans">
                 Folio<span className="text-[#6e56cf]">Craft</span>
               </span>
             </Link>
-            <span className="text-[#cbd5e1] font-light">/</span>
+            <span className="hidden sm:inline text-[#cbd5e1] font-light">/</span>
             <Link
               href="/dashboard"
-              className="text-xs font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors"
+              className="hidden sm:inline text-xs font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors"
             >
               Dashboard
             </Link>
             {selectedPortfolioId && (
               <>
-                <span className="text-[#cbd5e1] font-light">/</span>
+                <span className="hidden sm:inline text-[#cbd5e1] font-light">/</span>
                 <Link
                   href={`/portfolio/edit/${selectedPortfolioId}`}
-                  className="text-xs font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors"
+                  className="hidden sm:inline text-xs font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors"
                 >
                   Edit Portfolio
                 </Link>
               </>
             )}
             <span className="text-[#cbd5e1] font-light">/</span>
-            <span className="text-xs font-semibold text-[#6e56cf]">
+            <span className="truncate text-xs font-semibold text-[#6e56cf]">
               Templates
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             {selectedPortfolioId && (
               <Link
                 href={`/portfolio/edit/${selectedPortfolioId}`}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#475569] bg-[#f8f7fd] hover:bg-[#ede9f8] hover:text-[#0f172a] border border-[#eae6f5] transition-colors min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6e56cf]"
+                aria-label="Back to Editor"
+                className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-semibold text-[#475569] bg-[#f8f7fd] hover:bg-[#ede9f8] hover:text-[#0f172a] border border-[#eae6f5] transition-colors min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6e56cf]"
               >
                 <ArrowLeftIcon className="w-3.5 h-3.5" />
-                <span>Back to Editor</span>
+                <span className="hidden sm:inline">Back to Editor</span>
               </Link>
             )}
             <button
@@ -434,8 +443,12 @@ function TemplatesGalleryContent() {
               </div>
             )}
 
+            {/* Phase 13: category filter (state lives here; the gallery stays stateless) */}
+            <TemplateCategoryFilter value={categoryFilter} onChange={setCategoryFilter} className="mb-6 sm:mb-8" />
+
             {/* Reusable Template Gallery Component */}
             <TemplateGallery
+              templates={visibleTemplates}
               currentTemplate={(portfolio.template as PortfolioTemplateId) || "modern"}
               portfolioData={portfolioViewData}
               portfolioId={portfolio.id}

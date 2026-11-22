@@ -24,6 +24,7 @@ import { Portfolio, PortfolioTemplateId } from "@/types/portfolio";
 import { PortfolioViewData } from "@/templates/types";
 import {
   TEMPLATE_REGISTRY,
+  getTemplateCategoryLabel,
   isValidTemplateId,
 } from "@/templates/registry";
 import { TemplateRenderer } from "@/templates/TemplateRenderer";
@@ -270,6 +271,12 @@ function TemplatePreviewContent({
                     <span>{templateDef.meta.badge}</span>
                   </span>
                 )}
+                <span
+                  data-testid="preview-template-category"
+                  className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-slate-100 text-[#475569] flex-shrink-0"
+                >
+                  {getTemplateCategoryLabel(templateDef.meta.category)}
+                </span>
               </div>
               <p className="hidden md:block text-xs text-[#64748b] truncate">
                 {templateDef.meta.description}

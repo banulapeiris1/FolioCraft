@@ -57,12 +57,20 @@ export const RESERVED_USERNAMES = new Set([
 ]);
 
 /**
- * Supported portfolio templates in FolioCraft (PUB-03).
+ * Supported portfolio templates in FolioCraft (PUB-03, extended in Phase 13).
+ * Must stay in sync with the frontend template registry
+ * (frontend/src/templates/registry.ts). Unknown ids are rejected at publish time.
  */
 export const SUPPORTED_TEMPLATES = new Set([
   "modern",
   "minimal",
   "professional",
+  "editorial",
+  "bento",
+  "studio",
+  "executive",
+  "showcase",
+  "academic",
 ]);
 
 export interface UsernameValidationResult {

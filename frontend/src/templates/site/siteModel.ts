@@ -217,6 +217,119 @@ export function formatDateRange(
 }
 
 /**
+ * Human-readable tenure derived from experience dates: "2 yrs 3 mos", "8 mos".
+ * Returns "" when the start date is missing/invalid or the range is negative.
+ * `now` is injectable so the result is deterministic in tests.
+ */
+export function formatTenure(
+  startDate?: string | null,
+  endDate?: string | null,
+  isCurrent?: boolean,
+  now: Date = new Date()
+): string {
+  const parse = (value?: string | null): number | null => {
+    const [y, m] = (value || "").split("-").map((part) => parseInt(part, 10));
+    if (!Number.isFinite(y)) return null;
+    return y * 12 + ((Number.isFinite(m) ? m : 1) - 1);
+  };
+  const start = parse(startDate);
+  if (start === null) return "";
+  const end = isCurrent || !endDate ? (isCurrent ? now.getFullYear() * 12 + now.getMonth() : null) : parse(endDate);
+  if (end === null || end < start) return "";
+  const total = end - start + 1;
+  const years = Math.floor(total / 12);
+  const months = total % 12;
+  const parts: string[] = [];
+  if (years > 0) parts.push(`${years} ${years === 1 ? "yr" : "yrs"}`);
+  if (months > 0) parts.push(`${months} ${months === 1 ? "mo" : "mos"}`);
+  return parts.join(" ");
+}
+
+/** Up to two initials for monogram marks: "Jane van Doe" -> "JD"; empty -> "P". */
+export function getInitials(name?: string | null): string {
+  const words = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "P";
+  const first = words[0].charAt(0);
+  const last = words.length > 1 ? words[words.length - 1].charAt(0) : "";
+  return (first + last).toUpperCase();
+}
+
+/** Display label for a social platform key: "github" -> "GitHub". */
+export function socialPlatformLabel(key: string): string {
+  const normalized = key.trim();
+  const lower = normalized.toLowerCase();
+  if (lower === "linkedin") return "LinkedIn";
+  if (lower === "github") return "GitHub";
+  if (lower === "twitter" || lower === "x") return "X / Twitter";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+export interface SafeSocialLink {
+  platform: string;
+  label: string;
+  href: string;
+}
+
+/** Social links with unsafe or empty URLs removed (Phase 13 templates). */
+export function getSafeSocialLinks(links?: Record<string, string | undefined> | null): SafeSocialLink[] {
+  return Object.entries(links || {})
+    .map(([platform, url]) => ({ platform, label: socialPlatformLabel(platform), href: safeExternalUrl(url) }))
+    .filter((link): link is SafeSocialLink => link.href !== null);
+}
+
+export interface PortfolioStats {
+  projects: number;
+  skills: number;
+  roles: number;
+  /** Distinct technologies across all projects (case-insensitive). */
+  technologies: number;
+  /** Year of the earliest experience start date, or null when unknown. */
+  since: number | null;
+}
+
+/** Counts derived purely from existing portfolio data — nothing is invented. */
+export function getPortfolioStats(data: PortfolioViewData): PortfolioStats {
+  const techs = new Set<string>();
+  for (const project of data.projects) {
+    for (const tech of project.technologies || []) techs.add(tech.trim().toLowerCase());
+  }
+  techs.delete("");
+  const years = data.experiences
+    .map((exp) => parseInt((exp.startDate || "").slice(0, 4), 10))
+    .filter((year) => Number.isFinite(year) && year > 1900);
+  return {
+    projects: data.projects.length,
+    skills: data.skills.length,
+    roles: data.experiences.length,
+    technologies: techs.size,
+    since: years.length > 0 ? Math.min(...years) : null,
+  };
+}
+
+/**
+ * Groups projects (in display order) under each technology they use, most-used
+ * technology first, then alphabetical. Spelling of the first occurrence wins.
+ */
+export function groupProjectsByTechnology(projects: Project[]): Array<[string, Project[]]> {
+  const groups = new Map<string, { label: string; projects: Project[] }>();
+  for (const project of sortProjects(projects)) {
+    const seen = new Set<string>();
+    for (const raw of project.technologies || []) {
+      const label = raw.trim();
+      const key = label.toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      const group = groups.get(key) || { label, projects: [] };
+      group.projects.push(project);
+      groups.set(key, group);
+    }
+  }
+  return [...groups.values()]
+    .sort((a, b) => b.projects.length - a.projects.length || a.label.localeCompare(b.label))
+    .map((g) => [g.label, g.projects]);
+}
+
+/**
  * Returns a safe external http(s) URL, or null when the value cannot be made
  * safe (e.g. `javascript:` / `data:` schemes). Bare domains get https://.
  */

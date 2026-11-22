@@ -4,7 +4,9 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { PortfolioTemplateId } from "@/types/portfolio";
 import { PortfolioViewData } from "@/templates/types";
 import { TemplateRenderer } from "@/templates/TemplateRenderer";
+import { TEMPLATE_LIST, getTemplateCategoryLabel, getTemplateDefinition } from "@/templates/registry";
 import {
+  ColumnsIcon,
   MonitorIcon,
   TabletIcon,
   SmartphoneIcon,
@@ -313,28 +315,50 @@ export function PreviewShell({
             </button>
 
             {onTemplateChange && (
-              <div
-                role="group"
-                aria-label="Preview template"
-                className="hidden lg:flex items-center gap-1 border-l border-[#eae6f5] pl-2 ml-1"
+              // Phase 13: nine templates no longer fit inline, so the switcher is a
+              // compact native disclosure. Options come from the registry; keyed by
+              // the active template so the menu closes after a selection.
+              <details
+                key={activeTemplate}
+                data-testid="preview-template-switcher"
+                className="relative border-l border-[#eae6f5] pl-2 ml-1"
               >
-                {(["modern", "minimal", "professional"] as PortfolioTemplateId[]).map((tId) => (
-                  <button
-                    key={tId}
-                    type="button"
-                    aria-label={`Use ${tId} template`}
-                    aria-pressed={activeTemplate === tId}
-                    onClick={() => onTemplateChange(tId)}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-mono capitalize transition-all cursor-pointer ${
-                      activeTemplate === tId
-                        ? "bg-[#6e56cf] text-white font-bold"
-                        : "bg-white text-[#64748b] hover:bg-[#f3f0ff] border border-[#eae6f5]"
-                    }`}
-                  >
-                    {tId}
-                  </button>
-                ))}
-              </div>
+                <summary
+                  className="list-none [&::-webkit-details-marker]:hidden inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#eae6f5] bg-white text-[11px] font-semibold text-[#475569] hover:text-[#0f172a] hover:border-[#dcd3f8] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6e56cf] focus-visible:ring-offset-1"
+                  aria-label={`Change preview template (current: ${getTemplateDefinition(activeTemplate).meta.name})`}
+                >
+                  <ColumnsIcon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline max-w-[9rem] truncate">{getTemplateDefinition(activeTemplate).meta.name}</span>
+                </summary>
+                <div
+                  role="group"
+                  aria-label="Preview template"
+                  className="absolute right-0 top-full mt-2 z-30 w-60 max-h-[70vh] overflow-y-auto rounded-xl border border-[#eae6f5] bg-white shadow-lg p-1.5 flex flex-col gap-0.5"
+                >
+                  {TEMPLATE_LIST.map(({ meta }) => {
+                    const isActive = activeTemplate === meta.id;
+                    return (
+                      <button
+                        key={meta.id}
+                        type="button"
+                        aria-label={`Use ${meta.id} template`}
+                        aria-pressed={isActive}
+                        onClick={() => onTemplateChange(meta.id)}
+                        className={`flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-left text-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6e56cf] ${
+                          isActive
+                            ? "bg-[#6e56cf] text-white font-bold"
+                            : "text-[#475569] hover:bg-[#f3f0ff] hover:text-[#0f172a]"
+                        }`}
+                      >
+                        <span className="truncate">{meta.name}</span>
+                        <span className={`text-[10px] font-medium flex-shrink-0 ${isActive ? "text-white/80" : "text-[#94a3b8]"}`}>
+                          {getTemplateCategoryLabel(meta.category)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </details>
             )}
           </div>
         </header>

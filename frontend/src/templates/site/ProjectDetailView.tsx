@@ -118,7 +118,7 @@ export function ProjectDetailView({ data, username, location }: ProjectDetailVie
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12">
-        <section aria-labelledby="project-overview" className={theme.id === "minimal" ? "lg:col-span-3" : "lg:col-span-2"}>
+        <section aria-labelledby="project-overview" className={theme.mainColumn}>
           <h2 id="project-overview" className={`${theme.sectionTitle} mb-4`}>
             Overview
           </h2>
@@ -129,7 +129,7 @@ export function ProjectDetailView({ data, username, location }: ProjectDetailVie
           )}
         </section>
 
-        <section aria-labelledby="project-technologies" className={theme.id === "minimal" ? "lg:col-span-3" : ""}>
+        <section aria-labelledby="project-technologies" className={theme.sideColumn}>
           <h2 id="project-technologies" className={`${theme.sectionTitle} mb-4`}>
             Technologies
           </h2>

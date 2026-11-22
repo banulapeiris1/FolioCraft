@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import type { PortfolioViewData } from "../types";
-import { getSiteNavItems, portfolioPaths, type SitePageKey } from "./siteModel";
+import { getInitials, getSiteNavItems, portfolioPaths, type SitePageKey } from "./siteModel";
 import { getSiteTheme } from "./siteThemes";
 import { BriefcaseIcon, CodeIcon, MenuIcon } from "@/components/portfolio/PortfolioIcons";
 
@@ -26,12 +26,16 @@ export function SiteNav({ data, username, current }: SiteNavProps): React.JSX.El
   const paths = portfolioPaths(username);
 
   const brandLabel =
-    theme.id === "modern" ? `~/${username}` : data.name || "Portfolio";
+    theme.brandStyle === "handle" ? `~/${username}` : data.name || "Portfolio";
   const brandIcon =
-    theme.id === "modern" ? (
+    theme.brandIcon === "code" ? (
       <CodeIcon className={theme.brandMark} />
-    ) : theme.id === "professional" ? (
+    ) : theme.brandIcon === "briefcase" ? (
       <BriefcaseIcon className={theme.brandMark} />
+    ) : theme.brandIcon === "monogram" ? (
+      <span aria-hidden="true" className={theme.brandMark}>
+        {getInitials(data.name)}
+      </span>
     ) : null;
 
   return (
