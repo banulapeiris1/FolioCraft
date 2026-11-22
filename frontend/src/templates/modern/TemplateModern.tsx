@@ -1,5 +1,6 @@
 import React from "react";
 import { TemplateProps } from "../types";
+import { ProjectTitleLink } from "../site/ProjectTitleLink";
 import {
   MapPinIcon,
   MailIcon,
@@ -111,7 +112,12 @@ function formatDateRange(
  * - Vibrant tech-stack chips and interactive project showcase
  * - Pure presentation component (no external state or side effects)
  */
-export function TemplateModern({ data, className = "" }: TemplateProps): React.JSX.Element {
+export function TemplateModern({
+  data,
+  className = "",
+  siteNav,
+  getProjectHref,
+}: TemplateProps): React.JSX.Element {
   const currentYear = new Date().getFullYear();
 
   // Experiences: sort current first, then descending by startDate
@@ -168,43 +174,46 @@ export function TemplateModern({ data, className = "" }: TemplateProps): React.J
       {/* ========================================================= */}
       {/* 1. Technical Top Navigation Bar */}
       {/* ========================================================= */}
-      <nav
-        aria-label="Portfolio Navigation"
-        className="sticky top-0 z-20 backdrop-blur-md bg-slate-950/80 border-b border-slate-850 px-6 py-3.5 transition-colors"
-      >
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-          <a
-            href="#about"
-            className="flex items-center gap-2 font-mono text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm"
-          >
-            <CodeIcon className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-            <span className="truncate max-w-[150px] sm:max-w-none">{brandIdentifier}</span>
-          </a>
-
-          {navSections.length > 0 && (
-            <div className="hidden sm:flex items-center gap-6 text-xs font-mono text-slate-400">
-              {navSections.map((sec) => (
-                <a
-                  key={sec.href}
-                  href={sec.href}
-                  className="hover:text-emerald-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm py-1"
-                >
-                  {sec.label}
-                </a>
-              ))}
-            </div>
-          )}
-
-          {data.email && (
+      {/* Public multi-page mode supplies site navigation; otherwise use in-page anchors. */}
+      {siteNav ?? (
+        <nav
+          aria-label="Portfolio Navigation"
+          className="sticky top-0 z-20 backdrop-blur-md bg-slate-950/80 border-b border-slate-850 px-6 py-3.5 transition-colors"
+        >
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
             <a
-              href={`mailto:${data.email}`}
-              className="px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-950 bg-emerald-400 hover:bg-emerald-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              href="#about"
+              className="flex items-center gap-2 font-mono text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm"
             >
-              Get in Touch
+              <CodeIcon className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <span className="truncate max-w-[150px] sm:max-w-none">{brandIdentifier}</span>
             </a>
-          )}
-        </div>
-      </nav>
+
+            {navSections.length > 0 && (
+              <div className="hidden sm:flex items-center gap-6 text-xs font-mono text-slate-400">
+                {navSections.map((sec) => (
+                  <a
+                    key={sec.href}
+                    href={sec.href}
+                    className="hover:text-emerald-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-sm py-1"
+                  >
+                    {sec.label}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {data.email && (
+              <a
+                href={`mailto:${data.email}`}
+                className="px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-950 bg-emerald-400 hover:bg-emerald-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              >
+                Get in Touch
+              </a>
+            )}
+          </div>
+        </nav>
+      )}
 
       <main className="max-w-5xl mx-auto px-6 py-12 sm:py-20 lg:py-24 space-y-20 sm:space-y-24">
         {/* ========================================================= */}
@@ -330,7 +339,11 @@ export function TemplateModern({ data, className = "" }: TemplateProps): React.J
 
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-emerald-300 transition-colors break-words">
-                        {project.title}
+                        <ProjectTitleLink
+                          project={project}
+                          getProjectHref={getProjectHref}
+                          className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                        />
                       </h3>
 
                       <div className="flex items-center gap-1 flex-shrink-0">
