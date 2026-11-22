@@ -7,6 +7,7 @@ import { PortfolioViewData } from "@/templates/types";
 import {
   TEMPLATE_LIST,
   TemplateDefinition,
+  getTemplateCategoryLabel,
   isValidTemplateId,
 } from "@/templates/registry";
 import { TemplateRenderer } from "@/templates/TemplateRenderer";
@@ -76,7 +77,8 @@ export function TemplateGallery({
             }`}
           >
             {/* Visual Live Preview Container */}
-            <div className="relative w-full h-56 sm:h-64 bg-slate-50 border-b border-slate-100 overflow-hidden select-none group">
+            {/* content-visibility lets the browser skip rendering off-screen live previews (Phase 13: 9 templates). */}
+            <div className="relative w-full h-56 sm:h-64 bg-slate-50 border-b border-slate-100 overflow-hidden select-none group [content-visibility:auto] [contain-intrinsic-size:auto_16rem]">
               {/* Scaled Rendered Template Preview */}
               <div
                 className="absolute top-0 left-0 w-[1200px] h-[900px] pointer-events-none transform origin-top-left scale-[0.27] sm:scale-[0.26] md:scale-[0.28] lg:scale-[0.31]"
@@ -129,6 +131,14 @@ export function TemplateGallery({
                 <p className="text-xs sm:text-sm text-[#64748b] leading-relaxed line-clamp-2 break-words">
                   {meta.description}
                 </p>
+                {meta.category && (
+                  <span
+                    data-testid={`template-category-${meta.id}`}
+                    className="mt-3 inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-[#f3f0ff] text-[#6e56cf]"
+                  >
+                    {getTemplateCategoryLabel(meta.category)}
+                  </span>
+                )}
               </div>
 
               {/* Card Actions Footer */}

@@ -529,26 +529,27 @@ export default function EditPortfolioPage({
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 w-full bg-white/85 backdrop-blur-md border-b border-[#eae6f5]">
         <div className="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          {/* Breadcrumb: below lg only the logo (links to the dashboard) and the current page show, so the header never overflows. */}
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/dashboard"
-              className="flex items-center gap-2.5 group"
+              className="flex shrink-0 items-center gap-2.5 group"
               aria-label="FolioCraft Dashboard"
             >
               <FolioCraftLogo className="w-8 h-8 rounded-lg shadow-sm transition-transform group-hover:scale-105" />
-              <span className="text-xl font-bold tracking-tight text-[#0f172a] font-sans">
+              <span className="hidden lg:inline text-xl font-bold tracking-tight text-[#0f172a] font-sans">
                 Folio<span className="text-[#6e56cf]">Craft</span>
               </span>
             </Link>
-            <span className="text-[#cbd5e1] font-light">/</span>
+            <span className="hidden lg:inline text-[#cbd5e1] font-light">/</span>
             <Link
               href="/dashboard"
-              className="text-xs font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors"
+              className="hidden lg:inline text-xs font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors"
             >
               Dashboard
             </Link>
             <span className="text-[#cbd5e1] font-light">/</span>
-            <span className="text-xs font-semibold text-[#6e56cf]">
+            <span className="truncate text-xs font-semibold text-[#6e56cf]">
               Edit Portfolio
             </span>
           </div>
@@ -557,7 +558,7 @@ export default function EditPortfolioPage({
           <div
             role="group"
             aria-label="Editor and preview layout"
-            className="hidden md:flex items-center bg-[#f8f7fd] p-1 rounded-xl border border-[#eae6f5]"
+            className="hidden md:flex shrink-0 items-center bg-[#f8f7fd] p-1 rounded-xl border border-[#eae6f5]"
           >
             <button
               type="button"
@@ -605,7 +606,7 @@ export default function EditPortfolioPage({
 
           {/* Publishing & Live Portfolio Actions */}
           {portfolio && (
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               {portfolio.published ? (
                 <>
                   <span className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -618,6 +619,7 @@ export default function EditPortfolioPage({
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#0f172a] bg-white hover:bg-[#f8f7fd] border border-[#eae6f5] transition-all"
                     title="Open live published portfolio in new tab"
+                    aria-label="View Live (opens in new tab)"
                   >
                     <ExternalLinkIcon className="w-3.5 h-3.5 text-[#6e56cf]" />
                     <span className="hidden sm:inline">View Live</span>
@@ -625,10 +627,11 @@ export default function EditPortfolioPage({
                   <button
                     type="button"
                     onClick={() => setIsPublishModalOpen(true)}
+                    aria-label="Live Settings"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#6e56cf] bg-[#f3f0ff] hover:bg-[#eae4fc] border border-[#dcd3f8] transition-all cursor-pointer"
                   >
                     <SparklesIcon className="w-3.5 h-3.5" />
-                    <span>Live Settings</span>
+                    <span className="hidden sm:inline">Live Settings</span>
                   </button>
                 </>
               ) : (
@@ -644,14 +647,17 @@ export default function EditPortfolioPage({
             </div>
           )}
 
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#f8f7fd] border border-[#eae6f5] text-xs">
+          <div className="flex shrink-0 items-center gap-3">
+            {/* The name chip shows from lg; below that the signed-in user is announced to assistive tech and shown on hover of Log out. */}
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#f8f7fd] border border-[#eae6f5] text-xs">
               <span className="w-2 h-2 rounded-full bg-[#10b981]" />
               <span className="font-semibold text-[#0f172a]">{user.name}</span>
             </div>
+            <span className="sr-only lg:hidden">Signed in as {user.name}</span>
             <button
               type="button"
               onClick={handleLogout}
+              title={`Signed in as ${user.name}`}
               className="text-xs font-semibold text-[#64748b] hover:text-[#dc2626] px-3.5 py-2 rounded-xl border border-[#eae6f5] hover:border-[#fecaca] hover:bg-[#fef2f2] transition-colors cursor-pointer"
             >
               Log out

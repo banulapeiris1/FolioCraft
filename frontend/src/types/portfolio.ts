@@ -132,9 +132,19 @@ export interface PortfolioFormErrors {
 }
 
 /**
- * Supported portfolio template themes.
+ * Supported portfolio template themes (original three + Phase 13 collection).
+ * Must stay in sync with SUPPORTED_TEMPLATES in backend/src/utils/validation.ts.
  */
-export type PortfolioTemplateId = "modern" | "minimal" | "professional";
+export type PortfolioTemplateId =
+  | "modern"
+  | "minimal"
+  | "professional"
+  | "editorial"
+  | "bento"
+  | "studio"
+  | "executive"
+  | "showcase"
+  | "academic";
 
 export interface TemplateOption {
   id: PortfolioTemplateId;

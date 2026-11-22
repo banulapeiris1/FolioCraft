@@ -57,12 +57,24 @@ export interface TemplateProps {
 }
 
 /**
+ * Template collection categories (Phase 13), used to group and filter
+ * templates in the gallery and selectors.
+ */
+export type TemplateCategory = "developer" | "minimal" | "professional" | "creative" | "academic";
+
+/**
  * Metadata describing a template for selection, registry lookups, and display.
  */
 export interface TemplateMeta {
   id: PortfolioTemplateId;
   name: string;
   description: string;
+  /**
+   * Collection category. Required for every template in TEMPLATE_REGISTRY
+   * (enforced by RegisteredTemplateDefinition); optional here so externally
+   * supplied template lists keep working and simply appear as uncategorized.
+   */
+  category?: TemplateCategory;
   badge?: string;
 }
 

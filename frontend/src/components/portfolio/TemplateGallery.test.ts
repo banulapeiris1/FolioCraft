@@ -109,7 +109,7 @@ test("TPL-07: TemplateGallery Component & Selection Flow Suite", async (t) => {
 
     assert.ok(React.isValidElement<any>(element));
     const cards = getCards(element);
-    assert.equal(cards.length, 3);
+    assert.equal(cards.length, TEMPLATE_LIST.length);
 
     // Modern Developer
     const modernCard = findCardById(cards, "modern")!;
@@ -282,7 +282,7 @@ test("TPL-07: TemplateGallery Component & Selection Flow Suite", async (t) => {
 
     assert.ok(React.isValidElement<any>(element));
     const cards = getCards(element);
-    assert.equal(cards.length, 4);
+    assert.equal(cards.length, TEMPLATE_LIST.length + 1);
 
     const creativeCard = findCardById(cards, "creative");
     assert.ok(creativeCard, "Future template card must be rendered");
@@ -326,7 +326,7 @@ test("TPL-07: TemplateGallery Component & Selection Flow Suite", async (t) => {
 
     assert.ok(React.isValidElement<any>(selectorElem));
     const buttons = React.Children.toArray(selectorElem.props.children) as React.ReactElement<any>[];
-    assert.equal(buttons.length, 3);
+    assert.equal(buttons.length, TEMPLATE_LIST.length);
     assert.equal(buttons[2].props["aria-checked"], true);
 
     buttons[0].props.onClick();

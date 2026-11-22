@@ -86,17 +86,37 @@ test("TPL-02: Template Foundation & Registry Unit Test Suite", async (t) => {
   // -------------------------------------------------------------
   // Section 1: Template Registry Verification
   // -------------------------------------------------------------
-  await t.test("1. Registry contains exactly 3 approved templates: modern, minimal, professional", () => {
+  await t.test("1. Registry contains exactly the approved templates (original three + Phase 13 collection)", () => {
     const keys = Object.keys(TEMPLATE_REGISTRY);
-    assert.equal(keys.length, 3);
-    assert.deepEqual(keys.sort(), ["minimal", "modern", "professional"]);
+    assert.equal(keys.length, 9);
+    assert.deepEqual(keys.sort(), [
+      "academic",
+      "bento",
+      "editorial",
+      "executive",
+      "minimal",
+      "modern",
+      "professional",
+      "showcase",
+      "studio",
+    ]);
     assert.equal(DEFAULT_TEMPLATE_ID, "modern");
   });
 
   await t.test("2. TEMPLATE_LIST contains definitions in expected display order with complete metadata", () => {
-    assert.equal(TEMPLATE_LIST.length, 3);
+    assert.equal(TEMPLATE_LIST.length, 9);
     const ids = TEMPLATE_LIST.map((item) => item.meta.id);
-    assert.deepEqual(ids, ["modern", "minimal", "professional"]);
+    assert.deepEqual(ids, [
+      "modern",
+      "minimal",
+      "professional",
+      "editorial",
+      "bento",
+      "studio",
+      "executive",
+      "showcase",
+      "academic",
+    ]);
 
     TEMPLATE_LIST.forEach((item) => {
       assert.ok(item.meta.id, "Metadata must have id");

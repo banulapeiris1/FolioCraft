@@ -10,7 +10,7 @@ test("TPL-03: TemplateSelector Component & Persistence Contract Suite", async (t
   // -------------------------------------------------------------
   // Section 1: Component Rendering & Metadata Source of Truth
   // -------------------------------------------------------------
-  await t.test("1. Renders all 3 templates from TEMPLATE_LIST source of truth", () => {
+  await t.test("1. Renders all templates from TEMPLATE_LIST source of truth", () => {
     let selectedId: PortfolioTemplateId = "modern";
     const element = TemplateSelector({
       value: "modern",
@@ -23,9 +23,9 @@ test("TPL-03: TemplateSelector Component & Persistence Contract Suite", async (t
     assert.ok(React.isValidElement<React.HTMLAttributes<HTMLDivElement>>(element));
     assert.equal(element.props.role, "radiogroup");
 
-    // Children are the 3 template buttons
+    // Children are one button per registered template
     const children = React.Children.toArray(element.props.children) as React.ReactElement<React.ButtonHTMLAttributes<HTMLButtonElement>>[];
-    assert.equal(children.length, 3);
+    assert.equal(children.length, TEMPLATE_LIST.length);
 
     // Verify template names match TEMPLATE_LIST exactly
     const expectedNames = TEMPLATE_LIST.map((t) => t.meta.name);
@@ -177,13 +177,16 @@ test("TPL-03: TemplateSelector Component & Persistence Contract Suite", async (t
     });
     const children = React.Children.toArray(element.props.children) as React.ReactElement<any>[];
 
-    // Left from index 0 should wrap to index 2 ("professional")
-    children[0].props.onKeyDown({ key: "ArrowLeft", preventDefault: () => {} });
-    assert.deepEqual(calls, ["professional"]);
+    const lastIndex = TEMPLATE_LIST.length - 1;
+    const lastId = TEMPLATE_LIST[lastIndex].meta.id;
 
-    // Right from index 2 should wrap to index 0 ("modern")
-    children[2].props.onKeyDown({ key: "ArrowRight", preventDefault: () => {} });
-    assert.deepEqual(calls, ["professional", "modern"]);
+    // Left from index 0 should wrap to the last template
+    children[0].props.onKeyDown({ key: "ArrowLeft", preventDefault: () => {} });
+    assert.deepEqual(calls, [lastId]);
+
+    // Right from the last template should wrap to index 0 ("modern")
+    children[lastIndex].props.onKeyDown({ key: "ArrowRight", preventDefault: () => {} });
+    assert.deepEqual(calls, [lastId, "modern"]);
   });
 
   // -------------------------------------------------------------

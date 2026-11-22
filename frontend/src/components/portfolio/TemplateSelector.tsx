@@ -2,7 +2,7 @@
 
 import React from "react";
 import { PortfolioTemplateId } from "@/types/portfolio";
-import { TEMPLATE_LIST, isValidTemplateId } from "@/templates/registry";
+import { TEMPLATE_LIST, getTemplateCategoryLabel, isValidTemplateId } from "@/templates/registry";
 
 export interface TemplateSelectorProps {
   value: PortfolioTemplateId;
@@ -59,7 +59,7 @@ export function TemplateSelector({
       role="radiogroup"
       aria-labelledby={ariaLabelledBy}
       aria-label={ariaLabelledBy ? undefined : "Curated Presentation Theme"}
-      className={`grid grid-cols-1 sm:grid-cols-3 gap-4 ${className}`}
+      className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${className}`}
     >
       {TEMPLATE_LIST.map(({ meta }, index) => {
         const isSelected = activeValue === meta.id;
@@ -106,6 +106,14 @@ export function TemplateSelector({
             <p id={`template-desc-${meta.id}`} className="text-xs text-[#64748b] leading-relaxed break-words">
               {meta.description}
             </p>
+            {meta.category && (
+              <span
+                data-testid={`template-category-${meta.id}`}
+                className="mt-2.5 inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-[#f3f0ff] text-[#6e56cf]"
+              >
+                {getTemplateCategoryLabel(meta.category)}
+              </span>
+            )}
           </button>
         );
       })}

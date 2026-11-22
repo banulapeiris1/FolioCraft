@@ -116,7 +116,7 @@ export function ProjectsListView({ data, username }: ProjectsListViewProps): Rea
         />
       ) : (
         <div
-          className={`grid grid-cols-1 gap-6 ${theme.id === "minimal" ? "" : "md:grid-cols-2"}`}
+          className={`grid grid-cols-1 gap-6 ${theme.projectGrid}`}
           data-testid="projects-grid"
         >
           {entries.map((entry) => (
