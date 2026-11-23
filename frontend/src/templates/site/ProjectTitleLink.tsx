@@ -1,6 +1,10 @@
 import React from "react";
 import Link from "next/link";
 import type { Project } from "@/types/project";
+import { NAV_FORWARD } from "../motion/motionConfig";
+
+// Opening a project goes deeper into the portfolio: forward page transition.
+const FORWARD = [NAV_FORWARD];
 
 export interface ProjectTitleLinkProps {
   project: Project;
@@ -21,7 +25,7 @@ export function ProjectTitleLink({
   const href = getProjectHref?.(project);
   if (!href) return <>{project.title}</>;
   return (
-    <Link href={href} className={`hover:underline underline-offset-4 rounded-sm ${className}`}>
+    <Link href={href} className={`hover:underline underline-offset-4 rounded-sm ${className}`} transitionTypes={FORWARD}>
       {project.title}
     </Link>
   );

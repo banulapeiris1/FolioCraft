@@ -19,6 +19,9 @@ export interface SiteNavProps {
  * - Desktop: inline links. Mobile: a native <details> disclosure menu, which
  *   works without client JavaScript and is keyboard accessible by default.
  * - Styled per template via SiteTheme so it matches the owner's template.
+ * - Phase 14: data-* hooks let motion.css anchor the bar during page
+ *   transitions, slide the active indicator between links, animate the
+ *   mobile menu and add a scroll shadow. No client JavaScript is involved.
  */
 export function SiteNav({ data, username, current }: SiteNavProps): React.JSX.Element {
   const theme = getSiteTheme(data.template);
@@ -39,7 +42,7 @@ export function SiteNav({ data, username, current }: SiteNavProps): React.JSX.El
     ) : null;
 
   return (
-    <nav aria-label="Portfolio" data-testid="portfolio-site-nav" className={theme.nav}>
+    <nav aria-label="Portfolio" data-testid="portfolio-site-nav" className={theme.nav} data-site-nav="">
       <div className={theme.navInner}>
         <Link href={paths.home} className={`${theme.brand} ${theme.focusRing}`}>
           {brandIcon}
@@ -56,6 +59,7 @@ export function SiteNav({ data, username, current }: SiteNavProps): React.JSX.El
                     href={item.href}
                     aria-current={active ? "page" : undefined}
                     className={`${active ? theme.navLinkActive : theme.navLink} ${theme.focusRing}`}
+                    data-nav-link=""
                   >
                     {item.label}
                   </Link>
@@ -74,14 +78,14 @@ export function SiteNav({ data, username, current }: SiteNavProps): React.JSX.El
           )}
 
           {/* Keyed by page so the menu starts closed after each navigation. */}
-          <details key={current} className="relative sm:hidden" data-testid="portfolio-site-nav-mobile">
+          <details key={current} className="relative sm:hidden" data-testid="portfolio-site-nav-mobile" data-nav-menu="">
             <summary
               className={`${theme.mobileToggle} ${theme.focusRing} [&::-webkit-details-marker]:hidden`}
               aria-label="Open portfolio menu"
             >
               <MenuIcon className="w-5 h-5" />
             </summary>
-            <ul className={theme.mobilePanel}>
+            <ul className={theme.mobilePanel} data-nav-panel="">
               {items.map((item) => {
                 const active = item.key === current;
                 return (

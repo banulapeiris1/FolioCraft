@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import type { SiteTheme } from "./siteThemes";
+import { heroItemProps } from "../motion/motionConfig";
 
 /**
  * Small presentational building blocks shared by the secondary portfolio
@@ -19,9 +20,9 @@ export interface PageHeaderProps {
 export function PageHeader({ theme, eyebrow, title, subtitle, children }: PageHeaderProps): React.JSX.Element {
   return (
     <header className="space-y-3 mb-10 sm:mb-14">
-      {eyebrow && <p className={theme.eyebrow}>{eyebrow}</p>}
-      <h1 className={theme.pageTitle}>{title}</h1>
-      {subtitle && <p className={`${theme.pageSubtitle} max-w-2xl`}>{subtitle}</p>}
+      {eyebrow && <p className={theme.eyebrow} {...heroItemProps(0)}>{eyebrow}</p>}
+      <h1 className={theme.pageTitle} {...heroItemProps(1)}>{title}</h1>
+      {subtitle && <p className={`${theme.pageSubtitle} max-w-2xl`} {...heroItemProps(2)}>{subtitle}</p>}
       {children}
     </header>
   );

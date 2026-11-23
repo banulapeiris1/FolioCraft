@@ -1,5 +1,13 @@
 // Frontend Portfolio Types (PORTFOLIO-06 & PORTFOLIO-07)
 
+import type { AnimationStyle } from "../templates/motion/motionConfig";
+
+/**
+ * Persisted, user-selectable animation style (Phase 14): subtle | creative | minimal.
+ * The gallery-only "none" mode is a MotionMode, never an AnimationStyle.
+ */
+export type { AnimationStyle };
+
 export type SocialLinks = Record<string, string>;
 
 /**
@@ -17,6 +25,8 @@ export interface PortfolioFormData {
   socialLinks?: SocialLinks;
   username: string;
   template?: string;
+  /** Phase 14 presentation setting; omitted values are treated as "subtle". */
+  animationStyle?: AnimationStyle;
 }
 
 /**
@@ -44,6 +54,8 @@ export interface Portfolio {
   socialLinks: SocialLinks;
   username: string;
   template: string;
+  /** Phase 14. Optional so responses from an older backend still type-check. */
+  animationStyle?: AnimationStyle;
   published: boolean;
   publishedAt?: string | null;
   publicUrl?: string | null;

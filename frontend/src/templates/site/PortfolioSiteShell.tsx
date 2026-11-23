@@ -3,6 +3,7 @@ import type { PortfolioViewData } from "../types";
 import type { SitePageKey } from "./siteModel";
 import { getSiteTheme } from "./siteThemes";
 import { SiteNav } from "./SiteNav";
+import { motionScopeProps } from "../motion/MotionRoot";
 
 export interface PortfolioSiteShellProps {
   data: PortfolioViewData;
@@ -14,6 +15,8 @@ export interface PortfolioSiteShellProps {
 /**
  * Shared frame for the secondary public portfolio pages (Phase 12):
  * themed page root, site navigation, content container and footer.
+ *
+ * Phase 14: the root is also the page's motion scope (motionScopeProps).
  *
  * The home page does not use this shell; it renders the owner's full template
  * and passes <SiteNav> into it via the template's `siteNav` prop.
@@ -33,6 +36,7 @@ export function PortfolioSiteShell({
       data-template={theme.id}
       data-page={current}
       className={theme.root}
+      {...motionScopeProps(data, theme.id)}
     >
       <SiteNav data={data} username={username} current={current} />
       <main id="main-content" className={`${theme.container} py-10 sm:py-16 lg:py-20`}>

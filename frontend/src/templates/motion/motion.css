@@ -1,0 +1,377 @@
+/*
+ * FolioCraft template motion system (Phase 14).
+ *
+ * Values come from CSS custom properties set by <MotionRoot> (motionConfig.ts),
+ * so one set of rules serves every template and animation style.
+ *
+ * Guarantees:
+ * - Nothing is hidden in server HTML: the hidden "before reveal" state requires
+ *   [data-motion-ready], which only the client runtime sets.
+ * - Every animation lives under prefers-reduced-motion: no-preference.
+ * - Only opacity and transform animate (no layout shift).
+ * - Reveal/hero animations use fill-mode "backwards", so once finished the
+ *   element's own styles (template hovers, transforms) apply untouched.
+ */
+
+/* The <MotionRoot> wrapper adds no box: templates lay out exactly as before.
+   (Scopes applied to existing elements via motionScopeProps keep their display.) */
+[data-motion-wrapper] {
+  display: contents;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* ---- Scroll reveal ---------------------------------------------------- */
+
+  [data-motion-ready]:not([data-motion="none"]) [data-reveal]:not([data-revealed]) {
+    opacity: 0;
+    transform: translate3d(0, var(--motion-reveal-distance, 0px), 0) scale(var(--motion-reveal-scale, 1));
+  }
+
+  [data-motion-ready]:not([data-motion="none"]) [data-reveal][data-revealed="animate"] {
+    animation: fc-reveal-in var(--motion-reveal-duration, 0ms) var(--motion-ease, ease-out) backwards;
+    animation-delay: calc(var(--reveal-i, 0) * var(--motion-reveal-stagger, 0ms));
+  }
+
+  /* ---- Hero entrance (CSS only: runs at first paint, no JS needed) ------- */
+
+  [data-motion]:not([data-motion="none"]) [data-hero-item] {
+    animation: fc-hero-in var(--motion-hero-duration, 0ms) var(--motion-ease, ease-out) backwards;
+    animation-delay: calc(var(--hero-i, 0) * var(--motion-hero-stagger, 0ms));
+  }
+
+  /* ---- Card hover / focus (subtle + creative only) ----------------------- */
+
+  :is([data-motion="subtle"], [data-motion="creative"]) [data-motion-card] {
+    /* Keep the colour/shadow transitions templates already rely on (Tailwind v4
+       moves with the individual translate/scale properties), add transform. */
+    transition-property: transform, translate, scale, box-shadow, border-color, background-color, color, opacity;
+    transition-duration: var(--motion-hover-duration, 200ms);
+    transition-timing-function: var(--motion-ease, ease-out);
+  }
+
+  /* Keyboard focus (not mouse clicks) lifts the card too. :is() is forgiving,
+     so browsers without :has() still get the :focus-visible case. The preset
+     lift replaces a theme's own hover translate instead of adding to it. */
+  :is([data-motion="subtle"], [data-motion="creative"]) [data-motion-card]:is(:focus-visible, :has(:focus-visible)) {
+    translate: none;
+    transform: translate3d(0, calc(-1 * var(--motion-hover-lift, 0px)), 0);
+  }
+
+  :is([data-motion="subtle"], [data-motion="creative"]) [data-motion-media] {
+    transition: transform var(--motion-hover-duration, 200ms) var(--motion-ease, ease-out);
+  }
+
+  :is([data-motion="subtle"], [data-motion="creative"]) [data-motion-card]:is(:focus-visible, :has(:focus-visible)) [data-motion-media] {
+    transform: scale(var(--motion-image-zoom, 1));
+  }
+
+  @media (hover: hover) {
+    :is([data-motion="subtle"], [data-motion="creative"]) [data-motion-card]:hover {
+      translate: none;
+      transform: translate3d(0, calc(-1 * var(--motion-hover-lift, 0px)), 0);
+    }
+
+    :is([data-motion="subtle"], [data-motion="creative"]) [data-motion-card]:hover [data-motion-media] {
+      transform: scale(var(--motion-image-zoom, 1));
+    }
+  }
+
+  /* ---- Page transitions (React <ViewTransition>, see PageTransition.tsx) -- */
+
+  /* "auto" classes come from the route templates, which do not know the
+     portfolio's style: they animate like subtle (the default style) and are
+     adjusted from the page's motion scope by the overrides further down. */
+
+  ::view-transition-old(.fc-page-subtle),
+  ::view-transition-old(.fc-page-creative),
+  ::view-transition-old(.fc-page-auto) {
+    animation: 150ms ease-out both fc-vt-fade-out;
+  }
+
+  ::view-transition-new(.fc-page-subtle),
+  ::view-transition-new(.fc-page-creative),
+  ::view-transition-new(.fc-page-auto) {
+    animation: 240ms ease-out 90ms both fc-vt-fade-in;
+  }
+
+  ::view-transition-old(.fc-forward-subtle),
+  ::view-transition-old(.fc-back-subtle),
+  ::view-transition-new(.fc-forward-subtle),
+  ::view-transition-new(.fc-back-subtle),
+  ::view-transition-old(.fc-forward-auto),
+  ::view-transition-old(.fc-back-auto),
+  ::view-transition-new(.fc-forward-auto),
+  ::view-transition-new(.fc-back-auto) {
+    --fc-vt-distance: 16px;
+  }
+
+  ::view-transition-old(.fc-forward-creative),
+  ::view-transition-old(.fc-back-creative),
+  ::view-transition-new(.fc-forward-creative),
+  ::view-transition-new(.fc-back-creative),
+  :root:has([data-motion="creative"])::view-transition-old(.fc-forward-auto),
+  :root:has([data-motion="creative"])::view-transition-old(.fc-back-auto),
+  :root:has([data-motion="creative"])::view-transition-new(.fc-forward-auto),
+  :root:has([data-motion="creative"])::view-transition-new(.fc-back-auto) {
+    --fc-vt-distance: 40px;
+  }
+
+  /* Forward (list -> detail): old content leaves left, new arrives from right. */
+  ::view-transition-old(.fc-forward-subtle),
+  ::view-transition-old(.fc-forward-creative),
+  ::view-transition-old(.fc-forward-auto) {
+    animation: 180ms ease-in both fc-vt-out-left;
+  }
+
+  ::view-transition-new(.fc-forward-subtle),
+  ::view-transition-new(.fc-forward-creative),
+  ::view-transition-new(.fc-forward-auto) {
+    animation: 320ms cubic-bezier(0.22, 1, 0.36, 1) 60ms both fc-vt-in-right;
+  }
+
+  /* Back (detail -> list): the reverse direction. */
+  ::view-transition-old(.fc-back-subtle),
+  ::view-transition-old(.fc-back-creative),
+  ::view-transition-old(.fc-back-auto) {
+    animation: 180ms ease-in both fc-vt-out-right;
+  }
+
+  ::view-transition-new(.fc-back-subtle),
+  ::view-transition-new(.fc-back-creative),
+  ::view-transition-new(.fc-back-auto) {
+    animation: 320ms cubic-bezier(0.22, 1, 0.36, 1) 60ms both fc-vt-in-left;
+  }
+
+  /* Browser Back / Forward between project pages (Stage 5). Next.js runs no
+     view transition for history navigations, so the incoming page content
+     slides in from the matching side instead: from the left on Back, from
+     the right on Forward (ENTER_ATTR, set by the motion runtime from
+     historyDirection.ts). The site nav is outside #main-content and stays
+     put. Fill "backwards" leaves no transform behind once it finishes. */
+  [data-motion-enter]:is([data-motion="subtle"], [data-motion="creative"]) #main-content {
+    --fc-vt-distance: 16px;
+  }
+
+  [data-motion-enter][data-motion="creative"] #main-content {
+    --fc-vt-distance: 40px;
+  }
+
+  [data-motion-enter="back"]:is([data-motion="subtle"], [data-motion="creative"]) #main-content {
+    animation: 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards fc-vt-in-left;
+  }
+
+  [data-motion-enter="forward"]:is([data-motion="subtle"], [data-motion="creative"]) #main-content {
+    animation: 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards fc-vt-in-right;
+  }
+
+  /* A page replacing the loading skeleton fades in instead of popping in
+     (HANDOFF_ATTR, set by the motion runtime). */
+  [data-motion-handoff]:not([data-motion="none"]) {
+    animation: fc-vt-fade-in 240ms ease-out backwards;
+  }
+
+  /* ---- Site navigation (SiteNav.tsx) ------------------------------------- */
+
+  /* Sliding active indicator: the active link (underline or pill) moves from
+     the old page's link to the new one while the bar itself stays put. */
+  ::view-transition-group(fc-nav-active) {
+    z-index: 101;
+    animation-duration: 280ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  ::view-transition-old(fc-nav-active) {
+    animation: 120ms ease-out both fc-vt-fade-out;
+  }
+
+  ::view-transition-new(fc-nav-active) {
+    animation: 200ms ease-out 80ms both fc-vt-fade-in;
+  }
+
+  /* Hover / keyboard-focus hint on inactive underline links, only for themes
+     that do not already define their own hover underline. */
+  :is([data-motion="subtle"], [data-motion="creative"]) [data-nav-link]:not([aria-current="page"]):not([class*="hover:border-"]):focus-visible {
+    border-bottom-color: color-mix(in srgb, currentColor 45%, transparent);
+  }
+
+  @media (hover: hover) {
+    :is([data-motion="subtle"], [data-motion="creative"]) [data-nav-link]:not([aria-current="page"]):not([class*="hover:border-"]):hover {
+      border-bottom-color: color-mix(in srgb, currentColor 45%, transparent);
+    }
+  }
+
+  /* Mobile menu (native <details>): the panel eases in on open... */
+  [data-motion]:not([data-motion="none"]) [data-nav-menu][open] [data-nav-panel] {
+    animation: fc-menu-in 200ms var(--motion-ease, ease-out) backwards;
+  }
+
+  /* ...and fades out on close where ::details-content is supported
+     (elsewhere it closes instantly, exactly as before). Gated on the client
+     runtime like every other hidden state. */
+  @supports selector(::details-content) {
+    [data-motion-ready]:not([data-motion="none"]) [data-nav-menu]::details-content {
+      opacity: 0;
+      transition:
+        opacity 160ms ease-in,
+        content-visibility 160ms allow-discrete;
+    }
+
+    [data-motion-ready]:not([data-motion="none"]) [data-nav-menu][open]::details-content {
+      opacity: 1;
+    }
+  }
+
+  /* The sticky bar gains a soft shadow once the page scrolls: a pre-drawn
+     shadow layer fades in with a scroll-driven animation (opacity only, no
+     JavaScript; browsers without support keep the flat bar). */
+  @supports (animation-timeline: scroll()) {
+    :is([data-motion="subtle"], [data-motion="creative"]) [data-site-nav]::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: 0 10px 24px -18px rgb(0 0 0 / 0.45);
+      pointer-events: none;
+      animation: fc-vt-fade-in linear both;
+      animation-duration: auto;
+      animation-timeline: scroll(root block);
+      animation-range: 0px 96px;
+    }
+  }
+
+  /* ---- Loading skeleton (app/u/[username]/loading.tsx) -------------------- */
+
+  /* Quick navigations never flash a skeleton: blocks fade in after a beat,
+     then breathe gently (one shared pulse instead of per-block pulsing). */
+  [data-skeleton-content] {
+    animation:
+      fc-vt-fade-in 280ms ease-out 140ms backwards,
+      fc-skeleton-pulse 2.4s ease-in-out 420ms infinite;
+  }
+}
+
+/* ---- Page transitions: style overrides for "auto" and the anchored nav ---- */
+
+/* Minimal / none portfolios get no page animation: the content just swaps. */
+:root:has([data-motion="minimal"], [data-motion="none"])::view-transition-group(*),
+:root:has([data-motion="minimal"], [data-motion="none"])::view-transition-old(*),
+:root:has([data-motion="minimal"], [data-motion="none"])::view-transition-new(*) {
+  animation: none;
+}
+
+/* The site nav is anchored: it never fades or slides with the page content. */
+[data-motion]:not([data-motion="none"]) [data-site-nav] {
+  view-transition-name: fc-site-nav;
+}
+
+[data-motion]:not([data-motion="none"]) [data-site-nav] [data-nav-link][aria-current="page"] {
+  view-transition-name: fc-nav-active;
+}
+
+::view-transition-group(fc-site-nav) {
+  z-index: 100;
+  animation: none;
+}
+
+::view-transition-old(fc-site-nav) {
+  display: none;
+}
+
+::view-transition-new(fc-site-nav) {
+  animation: none;
+}
+
+/* Clicks during a transition reach the live page instead of the overlay. */
+::view-transition {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* Printed portfolios always show every element, fully opaque and in place. */
+@media print {
+  [data-reveal],
+  [data-hero-item],
+  [data-motion-card],
+  [data-motion-media],
+  [data-skeleton-content],
+  [data-motion-enter] #main-content {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@keyframes fc-reveal-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--motion-reveal-distance, 0px), 0) scale(var(--motion-reveal-scale, 1));
+  }
+}
+
+@keyframes fc-hero-in {
+  from {
+    opacity: var(--motion-hero-from-opacity, 1);
+    transform: translate3d(0, var(--motion-hero-distance, 0px), 0);
+  }
+}
+
+@keyframes fc-menu-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, max(-8px, calc(var(--motion-reveal-distance, 0px) * -0.375)), 0);
+  }
+}
+
+@keyframes fc-skeleton-pulse {
+  50% {
+    opacity: 0.65;
+  }
+}
+
+@keyframes fc-vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fc-vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fc-vt-out-left {
+  to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--fc-vt-distance, 16px)));
+  }
+}
+
+@keyframes fc-vt-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(var(--fc-vt-distance, 16px));
+  }
+}
+
+@keyframes fc-vt-out-right {
+  to {
+    opacity: 0;
+    transform: translateX(var(--fc-vt-distance, 16px));
+  }
+}
+
+@keyframes fc-vt-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--fc-vt-distance, 16px)));
+  }
+}

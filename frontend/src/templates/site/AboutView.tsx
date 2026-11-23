@@ -4,6 +4,7 @@ import type { PortfolioViewData } from "../types";
 import { groupSkills, portfolioPaths, safeExternalUrl } from "./siteModel";
 import { getSiteTheme } from "./siteThemes";
 import { EmptyState, PageHeader, SectionHeading } from "./SitePrimitives";
+import { heroItemProps, revealProps } from "../motion/motionConfig";
 import {
   ArrowRightIcon,
   MailIcon,
@@ -42,14 +43,14 @@ export function AboutView({ data, username }: AboutViewProps): React.JSX.Element
       <div className={`${theme.mainColumn} min-w-0 space-y-12`}>
         <PageHeader theme={theme} eyebrow="About" title={data.name || "About"} subtitle={data.title || undefined}>
           {data.location && (
-            <p className={`${theme.muted} inline-flex items-center gap-1.5`}>
+            <p className={`${theme.muted} inline-flex items-center gap-1.5`} {...heroItemProps(3)}>
               <MapPinIcon className="w-4 h-4 flex-shrink-0" />
               <span className="break-words">{data.location}</span>
             </p>
           )}
         </PageHeader>
 
-        <section aria-labelledby="about-introduction">
+        <section aria-labelledby="about-introduction" {...revealProps()}>
           <SectionHeading theme={theme} id="about-introduction">
             Introduction
           </SectionHeading>
@@ -68,7 +69,7 @@ export function AboutView({ data, username }: AboutViewProps): React.JSX.Element
         </section>
 
         {skillGroups.length > 0 && (
-          <section aria-labelledby="about-skills" data-testid="about-skills">
+          <section aria-labelledby="about-skills" data-testid="about-skills" {...revealProps()}>
             <SectionHeading theme={theme} id="about-skills">
               Skills
             </SectionHeading>
@@ -93,6 +94,7 @@ export function AboutView({ data, username }: AboutViewProps): React.JSX.Element
       <aside
         aria-label="Profile and contact"
         className={`${theme.sideColumn} min-w-0`}
+        {...heroItemProps(3)}
       >
         <div className={`${theme.card} p-6 space-y-6 lg:sticky lg:top-24`}>
           {data.profileImageUrl && (

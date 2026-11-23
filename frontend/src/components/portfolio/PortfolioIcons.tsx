@@ -529,6 +529,23 @@ export function RotateCcwIcon({ className = "w-4 h-4" }: { className?: string })
   );
 }
 
+export function PlayIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <polygon points="6 3 20 12 6 21 6 3" />
+    </svg>
+  );
+}
+
 export function Maximize2Icon({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg

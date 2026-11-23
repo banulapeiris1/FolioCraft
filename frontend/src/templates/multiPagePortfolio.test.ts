@@ -841,7 +841,10 @@ test("Phase 12: about and experience pages", async (t) => {
 
   await t.test("responsive guards: overflow clipping, shrinkable columns and wrapping titles", async () => {
     for (const id of TEMPLATE_IDS) {
-      assert.match(getSiteTheme(id).root, /overflow-x-hidden/, `${id} root clips horizontal overflow`);
+      // Phase 14 Stage 5: clip (not hidden) so the root never becomes a scroll
+      // container, which made the sticky site nav stop sticking.
+      assert.match(getSiteTheme(id).root, /overflow-x-clip/, `${id} root clips horizontal overflow`);
+      assert.doesNotMatch(getSiteTheme(id).root, /overflow-x-hidden/, `${id} root is not a scroll container`);
       assert.match(getSiteTheme(id).pageTitle, /break-words/, `${id} long titles wrap`);
       assert.match(getSiteTheme(id).container, /px-4 sm:px-6/, `${id} has mobile gutters`);
     }

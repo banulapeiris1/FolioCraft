@@ -3,6 +3,10 @@ import Link from "next/link";
 import type { PortfolioViewData } from "../types";
 import { portfolioPaths, safeExternalUrl, type ProjectEntry, type ProjectLocation } from "./siteModel";
 import { getSiteTheme, type SiteTheme } from "./siteThemes";
+import { getTemplateMotion, heroItemProps, revealProps, NAV_BACK, NAV_FORWARD } from "../motion/motionConfig";
+
+const FORWARD = [NAV_FORWARD];
+const BACK = [NAV_BACK];
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -30,7 +34,9 @@ function AdjacentLink({ entry, direction, href, theme }: AdjacentLinkProps): Rea
     <Link
       href={href(entry.slug)}
       rel={isNext ? "next" : "prev"}
+      transitionTypes={isNext ? FORWARD : BACK}
       data-testid={`project-${direction}`}
+      {...getTemplateMotion(theme.id).card()}
       className={`${theme.cardInteractive} ${theme.focusRing} p-4 sm:p-5 flex flex-col gap-1 min-w-0 ${
         isNext ? "sm:items-end sm:text-right sm:col-start-2" : ""
       }`}
@@ -63,22 +69,24 @@ export function ProjectDetailView({ data, username, location }: ProjectDetailVie
     <article data-testid="project-detail" aria-labelledby="project-title" className="min-w-0">
       <Link
         href={paths.projects}
+        transitionTypes={BACK}
         className={`inline-flex items-center gap-1.5 mb-8 ${theme.textLink} ${theme.focusRing}`}
+        {...heroItemProps(0)}
       >
         <ArrowLeftIcon className="w-4 h-4" />
         All projects
       </Link>
 
       <header className="space-y-4 mb-8 sm:mb-10">
-        <p className={theme.eyebrow}>
+        <p className={theme.eyebrow} {...heroItemProps(1)}>
           Project {index + 1} of {location.total}
         </p>
-        <h1 id="project-title" className={theme.pageTitle}>
+        <h1 id="project-title" className={theme.pageTitle} {...heroItemProps(2)}>
           {project.title}
         </h1>
 
         {(githubUrl || liveUrl) && (
-          <div className="flex flex-wrap gap-3 pt-2" data-testid="project-links">
+          <div className="flex flex-wrap gap-3 pt-2" data-testid="project-links" {...heroItemProps(3)}>
             {liveUrl && (
               <a
                 href={liveUrl}
@@ -108,7 +116,7 @@ export function ProjectDetailView({ data, username, location }: ProjectDetailVie
       </header>
 
       {project.imageUrl && (
-        <figure className={`mb-10 sm:mb-12 ${theme.media}`}>
+        <figure className={`mb-10 sm:mb-12 ${theme.media}`} {...heroItemProps(4)}>
           <img
             src={project.imageUrl}
             alt={`Screenshot of ${project.title}`}
@@ -118,7 +126,7 @@ export function ProjectDetailView({ data, username, location }: ProjectDetailVie
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12">
-        <section aria-labelledby="project-overview" className={theme.mainColumn}>
+        <section aria-labelledby="project-overview" className={theme.mainColumn} {...revealProps()}>
           <h2 id="project-overview" className={`${theme.sectionTitle} mb-4`}>
             Overview
           </h2>
@@ -129,7 +137,7 @@ export function ProjectDetailView({ data, username, location }: ProjectDetailVie
           )}
         </section>
 
-        <section aria-labelledby="project-technologies" className={theme.sideColumn}>
+        <section aria-labelledby="project-technologies" className={theme.sideColumn} {...revealProps(1)}>
           <h2 id="project-technologies" className={`${theme.sectionTitle} mb-4`}>
             Technologies
           </h2>
@@ -152,6 +160,7 @@ export function ProjectDetailView({ data, username, location }: ProjectDetailVie
           aria-label="Project navigation"
           data-testid="project-pagination"
           className={`mt-14 sm:mt-16 pt-8 border-t ${theme.divider} grid grid-cols-1 sm:grid-cols-2 gap-4`}
+          {...revealProps()}
         >
           <AdjacentLink entry={location.previous} direction="previous" href={paths.project} theme={theme} />
           <AdjacentLink entry={location.next} direction="next" href={paths.project} theme={theme} />

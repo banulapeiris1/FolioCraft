@@ -1,6 +1,7 @@
 import React from "react";
 import { TemplateProps } from "../types";
 import { ProjectTitleLink } from "../site/ProjectTitleLink";
+import { getTemplateMotion, heroItemProps } from "../motion/motionConfig";
 import {
   MapPinIcon,
   MailIcon,
@@ -9,6 +10,8 @@ import {
   GlobeIcon,
   ExternalLinkIcon,
 } from "@/components/portfolio/PortfolioIcons";
+
+const motion = getTemplateMotion("minimal");
 
 /**
  * Minimal social media icon helpers for LinkedIn and Twitter/X
@@ -165,18 +168,18 @@ export function TemplateMinimal({
         <header className="border-b border-slate-100 pb-10 sm:pb-14 mb-12 sm:mb-16">
           <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-6 sm:gap-8">
             <div className="space-y-3 flex-1 min-w-0">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-slate-900 break-words">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-slate-900 break-words" {...heroItemProps(0)}>
                 {data.name || "Portfolio"}
               </h1>
 
               {data.title && (
-                <p className="text-lg sm:text-xl font-medium text-slate-600 leading-snug break-words">
+                <p className="text-lg sm:text-xl font-medium text-slate-600 leading-snug break-words" {...heroItemProps(1)}>
                   {data.title}
                 </p>
               )}
 
               {data.location && (
-                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium" {...heroItemProps(2)}>
                   <MapPinIcon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                   <span className="break-words">{data.location}</span>
                 </div>
@@ -185,7 +188,7 @@ export function TemplateMinimal({
 
             {/* Profile Image (only rendered if provided) */}
             {data.profileImageUrl && (
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0" {...heroItemProps(1)}>
                 <img
                   src={data.profileImageUrl}
                   alt={data.name ? `${data.name}'s profile photo` : "Profile photo"}
@@ -197,13 +200,13 @@ export function TemplateMinimal({
 
           {/* About / Summary */}
           {data.about && (
-            <p className="mt-6 text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl whitespace-pre-line">
+            <p className="mt-6 text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl whitespace-pre-line" {...heroItemProps(3)}>
               {data.about}
             </p>
           )}
 
           {/* Contact & Social Links */}
-          <address className="not-italic mt-6 pt-6 border-t border-slate-100 flex flex-wrap items-center gap-y-2.5 gap-x-5 text-xs text-slate-500">
+          <address className="not-italic mt-6 pt-6 border-t border-slate-100 flex flex-wrap items-center gap-y-2.5 gap-x-5 text-xs text-slate-500" {...heroItemProps(4)}>
             {data.email && (
               <a
                 href={`mailto:${data.email}`}
@@ -244,17 +247,18 @@ export function TemplateMinimal({
         {/* 2. Experience Section */}
         {/* ========================================================= */}
         {sortedExperiences.length > 0 && (
-          <section aria-labelledby="section-experience-heading" className="mb-12 sm:mb-16">
+          <section aria-labelledby="section-experience-heading" className="mb-12 sm:mb-16" {...motion.section()}>
             <h2
               id="section-experience-heading"
               className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-6 pb-2 border-b border-slate-100"
+              {...motion.heading()}
             >
               Experience
             </h2>
 
             <div className="space-y-8 sm:space-y-10">
               {sortedExperiences.map((exp) => (
-                <article key={exp.id} className="relative group">
+                <article key={exp.id} className="relative group" {...motion.item()}>
                   <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
                     <h3 className="text-base font-semibold text-slate-900">{exp.position}</h3>
                     <span className="text-xs text-slate-500 font-mono">
@@ -279,10 +283,11 @@ export function TemplateMinimal({
         {/* 3. Projects Section */}
         {/* ========================================================= */}
         {sortedProjects.length > 0 && (
-          <section aria-labelledby="section-projects-heading" className="mb-12 sm:mb-16">
+          <section aria-labelledby="section-projects-heading" className="mb-12 sm:mb-16" {...motion.section()}>
             <h2
               id="section-projects-heading"
               className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-6 pb-2 border-b border-slate-100"
+              {...motion.heading()}
             >
               Projects
             </h2>
@@ -292,6 +297,8 @@ export function TemplateMinimal({
                 <article
                   key={project.id}
                   className="p-5 sm:p-6 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all flex flex-col justify-between"
+                  {...motion.item()}
+                  {...motion.card()}
                 >
                   <div>
                     {project.imageUrl && (
@@ -301,6 +308,7 @@ export function TemplateMinimal({
                           alt={project.title}
                           className="w-full h-full object-cover"
                           loading="lazy"
+                          {...motion.media()}
                         />
                       </div>
                     )}
@@ -369,17 +377,18 @@ export function TemplateMinimal({
         {/* 4. Skills Section */}
         {/* ========================================================= */}
         {groupedSkills.length > 0 && (
-          <section aria-labelledby="section-skills-heading" className="mb-12 sm:mb-16">
+          <section aria-labelledby="section-skills-heading" className="mb-12 sm:mb-16" {...motion.section()}>
             <h2
               id="section-skills-heading"
               className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-6 pb-2 border-b border-slate-100"
+              {...motion.heading()}
             >
               Skills
             </h2>
 
             <div className="space-y-6">
               {groupedSkills.map(([category, skills]) => (
-                <div key={category}>
+                <div key={category} {...motion.item()}>
                   {groupedSkills.length > 1 && (
                     <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2.5">
                       {category}

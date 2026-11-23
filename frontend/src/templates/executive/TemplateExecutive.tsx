@@ -12,6 +12,12 @@ import {
 } from "../site/siteModel";
 import { ExternalLink } from "../shared/ExternalLink";
 import { MailIcon, MapPinIcon, PhoneIcon } from "@/components/portfolio/PortfolioIcons";
+import { getTemplateMotion, heroItemProps, revealProps } from "../motion/motionConfig";
+
+// Restrained by design; resolveMotionMode also caps this template at "subtle".
+// No reveal markers inside the sticky sidebar: content in a sticky box taller
+// than the viewport might never scroll into view.
+const motion = getTemplateMotion("executive");
 
 /**
  * Executive Suite — leadership portfolio (Phase 13).
@@ -31,7 +37,7 @@ const MAX_COMPETENCIES = 12;
 
 function SectionTitle({ id, kicker, children }: { id: string; kicker: string; children: React.ReactNode }) {
   return (
-    <header className="mb-8">
+    <header className="mb-8" {...motion.heading()}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9a7742]">{kicker}</p>
       <h2 id={id} className="mt-2 font-text-serif text-2xl sm:text-3xl font-semibold text-[#1f2329] tracking-tight">
         {children}
@@ -75,7 +81,7 @@ export function TemplateExecutive({
   return (
     <div
       data-testid="template-executive"
-      className={`template-executive min-h-screen bg-[#fbfaf7] text-[#2b2f36] font-sans selection:bg-[#b08d57]/25 selection:text-[#1f2329] overflow-x-hidden ${className}`}
+      className={`template-executive min-h-screen bg-[#fbfaf7] text-[#2b2f36] font-sans selection:bg-[#b08d57]/25 selection:text-[#1f2329] overflow-x-clip ${className}`}
     >
       {siteNav ?? (
         <nav aria-label="Executive Suite Navigation" className="border-b border-[#e7e2d8] bg-[#fbfaf7]/95">
@@ -114,23 +120,25 @@ export function TemplateExecutive({
                 src={data.profileImageUrl}
                 alt={`${name}'s profile photo`}
                 className="w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 object-cover ring-1 ring-[#b08d57] ring-offset-4 ring-offset-[#1f2329] flex-shrink-0"
+                {...heroItemProps(0)}
               />
             ) : (
               <span
                 aria-hidden="true"
                 className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center border border-[#b08d57] font-text-serif text-2xl sm:text-3xl text-[#d6b98a] flex-shrink-0"
+                {...heroItemProps(0)}
               >
                 {getInitials(data.name)}
               </span>
             )}
-            <div className="min-w-0">
+            <div className="min-w-0" {...heroItemProps(1)}>
               <h1 className="font-text-serif text-2xl sm:text-3xl font-semibold text-white leading-tight break-words">{name}</h1>
               {data.title && <p className="mt-2 text-sm text-[#d6b98a] leading-snug break-words">{data.title}</p>}
             </div>
           </div>
 
           {(data.email || data.phone || data.location) && (
-            <address className="not-italic mt-8 pt-6 border-t border-white/10 space-y-3 text-sm">
+            <address className="not-italic mt-8 pt-6 border-t border-white/10 space-y-3 text-sm" {...heroItemProps(2)}>
               {data.email && (
                 <a href={`mailto:${data.email}`} className={`flex items-center gap-3 hover:text-white break-all rounded-sm ${FOCUS_DARK}`}>
                   <MailIcon className="w-4 h-4 text-[#b08d57] flex-shrink-0" />
@@ -187,18 +195,18 @@ export function TemplateExecutive({
         {/* Reading column */}
         <Main id={siteNav ? undefined : "main-content"} className="min-w-0 space-y-16 sm:space-y-20">
           {data.about && (
-            <section id="summary" aria-labelledby="executive-summary" className="scroll-mt-24">
+            <section id="summary" aria-labelledby="executive-summary" className="scroll-mt-24" {...motion.section()}>
               <SectionTitle id="executive-summary" kicker="Profile">
                 Executive Summary
               </SectionTitle>
-              <p className="font-text-serif text-lg sm:text-xl leading-relaxed text-[#2b2f36] whitespace-pre-line break-words max-w-3xl">
+              <p className="font-text-serif text-lg sm:text-xl leading-relaxed text-[#2b2f36] whitespace-pre-line break-words max-w-3xl" {...motion.item()}>
                 {data.about}
               </p>
             </section>
           )}
 
           {figures.length > 0 && (
-            <section aria-label="Key figures" data-testid="executive-figures">
+            <section aria-label="Key figures" data-testid="executive-figures" {...revealProps()}>
               <dl className="grid grid-cols-2 md:grid-cols-4 border-y border-[#e7e2d8] divide-x divide-[#e7e2d8]">
                 {figures.map((figure) => (
                   <div key={figure.label} className="px-4 py-6 min-w-0">
@@ -211,7 +219,7 @@ export function TemplateExecutive({
           )}
 
           {experiences.length > 0 && (
-            <section id="career" aria-labelledby="executive-career" className="scroll-mt-24">
+            <section id="career" aria-labelledby="executive-career" className="scroll-mt-24" {...motion.section()}>
               <SectionTitle id="executive-career" kicker="Track record">
                 Career History
               </SectionTitle>
@@ -222,6 +230,7 @@ export function TemplateExecutive({
                     <li
                       key={exp.id}
                       className={`bg-white border border-[#e7e2d8] p-5 sm:p-7 border-l-4 ${exp.isCurrent ? "border-l-[#b08d57]" : "border-l-[#1f2329]"}`}
+                      {...motion.item()}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                         <div className="min-w-0">
@@ -259,11 +268,11 @@ export function TemplateExecutive({
           )}
 
           {projects.length > 0 && (
-            <section id="engagements" aria-labelledby="executive-engagements" className="scroll-mt-24">
+            <section id="engagements" aria-labelledby="executive-engagements" className="scroll-mt-24" {...motion.section()}>
               <SectionTitle id="executive-engagements" kicker="Portfolio">
                 Selected Engagements
               </SectionTitle>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[#e7e2d8] border border-[#e7e2d8]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[#e7e2d8] border border-[#e7e2d8]" {...motion.item()}>
                 {projects.map((project, index) => (
                   <article key={project.id} className="bg-[#fbfaf7] p-6 flex flex-col min-w-0 md:last:odd:col-span-2">
                     <p className="font-text-serif text-sm text-[#9a7742]">{String(index + 1).padStart(2, "0")}</p>

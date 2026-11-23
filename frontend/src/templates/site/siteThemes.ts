@@ -73,7 +73,7 @@ export interface SiteTheme {
 
 const modern: SiteTheme = {
   id: "modern",
-  root: "min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500/20 selection:text-emerald-300 overflow-x-hidden",
+  root: "min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500/20 selection:text-emerald-300 overflow-x-clip",
   container: "max-w-5xl mx-auto px-4 sm:px-6",
   focusRing:
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
@@ -123,7 +123,7 @@ const modern: SiteTheme = {
 
 const minimal: SiteTheme = {
   id: "minimal",
-  root: "min-h-screen bg-white text-slate-900 font-sans selection:bg-slate-200 selection:text-slate-900 overflow-x-hidden",
+  root: "min-h-screen bg-white text-slate-900 font-sans selection:bg-slate-200 selection:text-slate-900 overflow-x-clip",
   container: "max-w-3xl mx-auto px-4 sm:px-6",
   focusRing: "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2",
 
@@ -172,7 +172,7 @@ const minimal: SiteTheme = {
 
 const professional: SiteTheme = {
   id: "professional",
-  root: "min-h-screen bg-slate-50/60 text-slate-800 font-sans selection:bg-blue-900/10 selection:text-blue-950 overflow-x-hidden",
+  root: "min-h-screen bg-slate-50/60 text-slate-800 font-sans selection:bg-blue-900/10 selection:text-blue-950 overflow-x-clip",
   container: "max-w-5xl mx-auto px-4 sm:px-6",
   focusRing: "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-900 focus-visible:ring-offset-2",
 
@@ -226,7 +226,7 @@ const professional: SiteTheme = {
 /** Editorial: warm paper, Fraunces display, ruled lines, oxblood accent. */
 const editorial: SiteTheme = {
   id: "editorial",
-  root: "min-h-screen bg-[#f6f1e7] text-[#1c1917] font-text-serif selection:bg-[#8a2c0d] selection:text-[#f6f1e7] overflow-x-hidden",
+  root: "min-h-screen bg-[#f6f1e7] text-[#1c1917] font-text-serif selection:bg-[#8a2c0d] selection:text-[#f6f1e7] overflow-x-clip",
   container: "max-w-6xl mx-auto px-4 sm:px-8",
   focusRing:
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8a2c0d] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f6f1e7]",
@@ -277,7 +277,7 @@ const editorial: SiteTheme = {
 /** Executive Suite: ivory reading surface, charcoal + muted gold, serif headings. */
 const executive: SiteTheme = {
   id: "executive",
-  root: "min-h-screen bg-[#fbfaf7] text-[#2b2f36] font-sans selection:bg-[#b08d57]/25 selection:text-[#1f2329] overflow-x-hidden",
+  root: "min-h-screen bg-[#fbfaf7] text-[#2b2f36] font-sans selection:bg-[#b08d57]/25 selection:text-[#1f2329] overflow-x-clip",
   container: "max-w-6xl mx-auto px-4 sm:px-6",
   focusRing:
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b08d57] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbfaf7]",
@@ -328,7 +328,7 @@ const executive: SiteTheme = {
 /** Academic CV: white paper, Source Serif throughout, maroon small-caps labels. */
 const academic: SiteTheme = {
   id: "academic",
-  root: "min-h-screen bg-[#fdfcf9] text-[#2a2522] font-text-serif selection:bg-[#7a1f2b]/15 overflow-x-hidden",
+  root: "min-h-screen bg-[#fdfcf9] text-[#2a2522] font-text-serif selection:bg-[#7a1f2b]/15 overflow-x-clip",
   container: "max-w-4xl mx-auto px-4 sm:px-6",
   focusRing: "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a1f2b] focus-visible:ring-offset-2",
 
@@ -378,7 +378,7 @@ const academic: SiteTheme = {
 /** Bento Developer: warm grey canvas, rounded-3xl white tiles, zinc + lime. */
 const bento: SiteTheme = {
   id: "bento",
-  root: "min-h-screen bg-[#efeee9] text-zinc-900 font-sans selection:bg-lime-300 selection:text-zinc-900 overflow-x-hidden",
+  root: "min-h-screen bg-[#efeee9] text-zinc-900 font-sans selection:bg-lime-300 selection:text-zinc-900 overflow-x-clip",
   container: "max-w-6xl mx-auto px-4 sm:px-6",
   focusRing:
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 focus-visible:ring-offset-[#efeee9]",
@@ -429,7 +429,7 @@ const bento: SiteTheme = {
 /** Creative Studio: near-black, signal orange, Space Grotesk uppercase display. */
 const studio: SiteTheme = {
   id: "studio",
-  root: "min-h-screen bg-[#111111] text-[#f2efe8] font-grotesk selection:bg-[#ff5b1f] selection:text-[#111111] overflow-x-hidden",
+  root: "min-h-screen bg-[#111111] text-[#f2efe8] font-grotesk selection:bg-[#ff5b1f] selection:text-[#111111] overflow-x-clip",
   container: "max-w-7xl mx-auto px-4 sm:px-8",
   focusRing:
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff5b1f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111111]",
@@ -480,7 +480,7 @@ const studio: SiteTheme = {
 /** Project Showcase: cool grey canvas, white repo cards, indigo, mono metadata. */
 const showcase: SiteTheme = {
   id: "showcase",
-  root: "min-h-screen bg-[#f6f8fa] text-slate-800 font-sans selection:bg-indigo-200 selection:text-indigo-950 overflow-x-hidden",
+  root: "min-h-screen bg-[#f6f8fa] text-slate-800 font-sans selection:bg-indigo-200 selection:text-indigo-950 overflow-x-clip",
   container: "max-w-6xl mx-auto px-4 sm:px-6",
   focusRing:
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f6f8fa]",

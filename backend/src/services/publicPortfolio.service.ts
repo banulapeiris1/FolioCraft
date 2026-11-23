@@ -1,5 +1,6 @@
 import { pool } from "../config/database";
 import { AppError } from "../utils/errors";
+import { normalizeAnimationStyle } from "../utils/validation";
 import type {
   PublicPortfolioDto,
   SocialLinks,
@@ -20,6 +21,7 @@ interface PortfolioPublicDbRow {
   social_links: SocialLinks | null;
   username: string;
   template: string;
+  animation_style?: string | null;
   published: boolean;
   published_at: Date | null;
 }
@@ -136,6 +138,7 @@ export class PublicPortfolioService {
          social_links,
          username,
          template,
+         animation_style,
          published,
          published_at
        FROM portfolios
@@ -257,6 +260,7 @@ export class PublicPortfolioService {
       socialLinks: portfolioRow.social_links || {},
       username: portfolioRow.username,
       template: portfolioRow.template || "modern",
+      animationStyle: normalizeAnimationStyle(portfolioRow.animation_style),
       published: portfolioRow.published,
       publishedAt: portfolioRow.published_at,
       projects,

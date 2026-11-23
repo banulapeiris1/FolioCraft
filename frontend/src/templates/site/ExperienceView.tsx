@@ -3,6 +3,7 @@ import type { PortfolioViewData } from "../types";
 import { formatDateRange, portfolioPaths, sortExperiences } from "./siteModel";
 import { getSiteTheme } from "./siteThemes";
 import { EmptyState, PageHeader } from "./SitePrimitives";
+import { getTemplateMotion } from "../motion/motionConfig";
 
 export interface ExperienceViewProps {
   data: PortfolioViewData;
@@ -16,6 +17,7 @@ export interface ExperienceViewProps {
  */
 export function ExperienceView({ data, username }: ExperienceViewProps): React.JSX.Element {
   const theme = getSiteTheme(data.template);
+  const motion = getTemplateMotion(theme.id);
   const experiences = sortExperiences(data.experiences);
   const name = data.name || "This developer";
   const count = experiences.length;
@@ -38,11 +40,11 @@ export function ExperienceView({ data, username }: ExperienceViewProps): React.J
           action={{ href: portfolioPaths(username).home, label: "Back to portfolio" }}
         />
       ) : (
-        <ol className={`relative ${theme.timeline} ml-2 sm:ml-3 pl-6 sm:pl-8 space-y-10`} data-testid="experience-timeline">
+        <ol className={`relative ${theme.timeline} ml-2 sm:ml-3 pl-6 sm:pl-8 space-y-10`} data-testid="experience-timeline" {...motion.section()}>
           {experiences.map((exp) => {
             const dates = formatDateRange(exp.startDate, exp.endDate, exp.isCurrent);
             return (
-              <li key={exp.id} className="relative min-w-0" data-testid="experience-item">
+              <li key={exp.id} className="relative min-w-0" data-testid="experience-item" {...motion.item()}>
                 <span
                   aria-hidden="true"
                   className={`absolute -left-[31px] sm:-left-[39px] top-1.5 w-3 h-3 rounded-full ${theme.timelineDot}`}

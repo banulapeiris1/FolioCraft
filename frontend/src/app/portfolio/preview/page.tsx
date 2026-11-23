@@ -85,6 +85,7 @@ function StandalonePreviewContent() {
               socialLinks: loadedPort.socialLinks || {},
               username: loadedPort.username,
               template: tpl,
+              animationStyle: loadedPort.animationStyle,
             },
             {
               projects: projectsRes.projects || [],

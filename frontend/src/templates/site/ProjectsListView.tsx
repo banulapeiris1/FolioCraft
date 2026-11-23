@@ -4,6 +4,10 @@ import type { PortfolioViewData } from "../types";
 import { buildProjectEntries, portfolioPaths, type ProjectEntry } from "./siteModel";
 import { getSiteTheme, type SiteTheme } from "./siteThemes";
 import { EmptyState, PageHeader } from "./SitePrimitives";
+import { getTemplateMotion, NAV_FORWARD } from "../motion/motionConfig";
+
+// Opening a project from the list: forward page transition.
+const FORWARD = [NAV_FORWARD];
 import { ArrowRightIcon } from "@/components/portfolio/PortfolioIcons";
 
 const MAX_CARD_TECHNOLOGIES = 5;
@@ -12,6 +16,8 @@ interface ProjectCardProps {
   entry: ProjectEntry;
   href: string;
   theme: SiteTheme;
+  /** Position in the grid, used to stagger reveals along each row. */
+  index: number;
 }
 
 /**
@@ -19,8 +25,9 @@ interface ProjectCardProps {
  * link both go to the detail page; external GitHub / demo links live on the
  * detail page so the card never contains nested or competing links.
  */
-function ProjectCard({ entry, href, theme }: ProjectCardProps): React.JSX.Element {
+function ProjectCard({ entry, href, theme, index }: ProjectCardProps): React.JSX.Element {
   const { project } = entry;
+  const motion = getTemplateMotion(theme.id);
   const technologies = project.technologies.slice(0, MAX_CARD_TECHNOLOGIES);
   const hiddenCount = project.technologies.length - technologies.length;
   const headingId = `project-card-${entry.slug}`;
@@ -30,20 +37,23 @@ function ProjectCard({ entry, href, theme }: ProjectCardProps): React.JSX.Elemen
       aria-labelledby={headingId}
       data-testid="project-card"
       className={`${theme.cardInteractive} p-5 sm:p-6 flex flex-col h-full min-w-0`}
+      {...motion.item(index, 2)}
+      {...motion.card()}
     >
       {project.imageUrl && (
-        <Link href={href} tabIndex={-1} aria-hidden="true" className={`block mb-4 ${theme.media}`}>
+        <Link href={href} tabIndex={-1} aria-hidden="true" className={`block mb-4 ${theme.media}`} transitionTypes={FORWARD}>
           <img
             src={project.imageUrl}
             alt=""
             loading="lazy"
             className="w-full h-full object-cover"
+            {...motion.media()}
           />
         </Link>
       )}
 
       <h2 id={headingId} className={`${theme.cardTitle} mb-2`}>
-        <Link href={href} className={`hover:underline underline-offset-4 ${theme.focusRing}`}>
+        <Link href={href} className={`hover:underline underline-offset-4 ${theme.focusRing}`} transitionTypes={FORWARD}>
           {project.title}
         </Link>
       </h2>
@@ -72,6 +82,7 @@ function ProjectCard({ entry, href, theme }: ProjectCardProps): React.JSX.Elemen
           href={href}
           className={`inline-flex items-center gap-1.5 ${theme.textLink} ${theme.focusRing}`}
           aria-label={`View project: ${project.title}`}
+          transitionTypes={FORWARD}
         >
           View project
           <ArrowRightIcon className="w-4 h-4" />
@@ -89,6 +100,7 @@ export interface ProjectsListViewProps {
 /** Dedicated Projects page content (Phase 12). */
 export function ProjectsListView({ data, username }: ProjectsListViewProps): React.JSX.Element {
   const theme = getSiteTheme(data.template);
+  const motion = getTemplateMotion(theme.id);
   const paths = portfolioPaths(username);
   const entries = buildProjectEntries(data.projects);
   const owner = data.name || "This developer";
@@ -118,9 +130,10 @@ export function ProjectsListView({ data, username }: ProjectsListViewProps): Rea
         <div
           className={`grid grid-cols-1 gap-6 ${theme.projectGrid}`}
           data-testid="projects-grid"
+          {...motion.section()}
         >
-          {entries.map((entry) => (
-            <ProjectCard key={entry.project.id} entry={entry} href={paths.project(entry.slug)} theme={theme} />
+          {entries.map((entry, index) => (
+            <ProjectCard key={entry.project.id} entry={entry} href={paths.project(entry.slug)} theme={theme} index={index} />
           ))}
         </div>
       )}

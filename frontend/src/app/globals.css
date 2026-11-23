@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Phase 14 template motion system (reveals, hero, hover, page transitions). */
+@import "../templates/motion/motion.css";
 
 :root {
   --background: #faf9fd;
@@ -39,8 +41,11 @@
   }
 }
 
-html {
-  scroll-behavior: smooth;
+/* Smooth anchor scrolling only for users who have not asked for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 body {
