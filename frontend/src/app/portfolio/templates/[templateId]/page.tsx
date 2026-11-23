@@ -27,7 +27,8 @@ import {
   getTemplateCategoryLabel,
   isValidTemplateId,
 } from "@/templates/registry";
-import { TemplateRenderer } from "@/templates/TemplateRenderer";
+import { AnimatedTemplateRenderer } from "@/templates/TemplateRenderer";
+import { MotionRuntime } from "@/templates/motion/MotionRuntime";
 
 function TemplatePreviewContent({
   params,
@@ -111,6 +112,9 @@ function TemplatePreviewContent({
             skills: skillsRes.skills || [],
             experiences: experiencesRes.experiences || [],
             template: normalizedTemplateId,
+            // Phase 14: preview with the portfolio's saved animation style
+            // (read-only here; "Use This Template" never sends it).
+            animationStyle: portfolioRes.portfolio.animationStyle,
           };
           setPortfolioViewData(mappedViewData);
         }
@@ -395,10 +399,14 @@ function TemplatePreviewContent({
           </div>
         ) : (
           <div className="w-full">
-            <TemplateRenderer
+            {/* Phase 14: full-page preview shows the real portfolio motion
+                (saved style, template caps, reduced motion) via the shared
+                runtime. Thumbnails in the gallery stay static ("none"). */}
+            <AnimatedTemplateRenderer
               templateId={normalizedTemplateId}
               data={portfolioViewData}
             />
+            <MotionRuntime />
           </div>
         )}
       </main>

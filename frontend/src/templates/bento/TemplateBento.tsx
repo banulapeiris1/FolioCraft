@@ -11,6 +11,7 @@ import {
   sortProjects,
 } from "../site/siteModel";
 import { ExternalLink } from "../shared/ExternalLink";
+import { getTemplateMotion, heroItemProps } from "../motion/motionConfig";
 import { ArrowRightIcon, GithubIcon, MailIcon, MapPinIcon } from "@/components/portfolio/PortfolioIcons";
 
 /**
@@ -27,6 +28,10 @@ const FOCUS =
 
 const TILE = "rounded-3xl p-6 sm:p-7 min-w-0";
 const TILE_LIGHT = `${TILE} bg-white border border-black/5`;
+const motion = getTemplateMotion("bento");
+// Tiles share rows, so neighbouring tiles get a short (max 2-step) stagger.
+const BENTO_STAGGER = 3;
+
 const TILE_LABEL = "font-grotesk text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500";
 
 const MAX_SIDE_PROJECTS = 4;
@@ -67,7 +72,7 @@ export function TemplateBento({
   return (
     <div
       data-testid="template-bento"
-      className={`template-bento min-h-screen bg-[#efeee9] text-zinc-900 font-sans selection:bg-lime-300 selection:text-zinc-900 overflow-x-hidden ${className}`}
+      className={`template-bento min-h-screen bg-[#efeee9] text-zinc-900 font-sans selection:bg-lime-300 selection:text-zinc-900 overflow-x-clip ${className}`}
     >
       {siteNav ?? (
         <div className="sticky top-3 z-20 px-4 pt-3">
@@ -103,7 +108,7 @@ export function TemplateBento({
         <div id="top" data-testid="bento-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 auto-rows-auto">
           {/* Profile tile */}
           <section aria-label="Profile" data-testid="bento-tile-profile" className={`${TILE_LIGHT} sm:col-span-2 lg:row-span-2 flex flex-col`}>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4" {...heroItemProps(0)}>
               {data.profileImageUrl ? (
                 <img src={data.profileImageUrl} alt={`${name}'s profile photo`} className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover flex-shrink-0" />
               ) : (
@@ -118,15 +123,16 @@ export function TemplateBento({
                 </p>
               )}
             </div>
-            <h1 className="mt-6 font-grotesk text-4xl sm:text-5xl font-bold tracking-tight leading-[1.02] break-words">{name}</h1>
-            {data.title && <p className="mt-2 font-grotesk text-lg sm:text-xl text-zinc-500 break-words">{data.title}</p>}
+            <h1 className="mt-6 font-grotesk text-4xl sm:text-5xl font-bold tracking-tight leading-[1.02] break-words" {...heroItemProps(1)}>{name}</h1>
+            {data.title && <p className="mt-2 font-grotesk text-lg sm:text-xl text-zinc-500 break-words" {...heroItemProps(2)}>{data.title}</p>}
             {data.about && (
-              <p className="mt-5 text-sm sm:text-base leading-relaxed text-zinc-700 whitespace-pre-line break-words line-clamp-[8]">{data.about}</p>
+              <p className="mt-5 text-sm sm:text-base leading-relaxed text-zinc-700 whitespace-pre-line break-words line-clamp-[8]" {...heroItemProps(3)}>{data.about}</p>
             )}
             {data.email && (
               <a
                 href={`mailto:${data.email}`}
                 className={`mt-auto pt-6 inline-flex items-center gap-2 self-start group ${FOCUS} rounded-full`}
+                {...heroItemProps(4)}
               >
                 <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-zinc-900 text-white text-sm font-semibold group-hover:bg-zinc-700 transition-colors">
                   Get in touch
@@ -138,7 +144,7 @@ export function TemplateBento({
 
           {/* At a glance */}
           {glance.length > 0 && (
-            <section aria-labelledby="bento-glance" data-testid="bento-tile-stats" className={`${TILE} bg-zinc-900 text-white`}>
+            <section aria-labelledby="bento-glance" data-testid="bento-tile-stats" className={`${TILE} bg-zinc-900 text-white`} {...motion.item(1, BENTO_STAGGER)}>
               <h2 id="bento-glance" className="font-grotesk text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
                 At a glance
               </h2>
@@ -155,7 +161,7 @@ export function TemplateBento({
 
           {/* Now */}
           {(current || experiences[0]) && (
-            <section aria-labelledby="bento-now" data-testid="bento-tile-now" className={`${TILE} bg-lime-300`}>
+            <section aria-labelledby="bento-now" data-testid="bento-tile-now" className={`${TILE} bg-lime-300`} {...motion.item(2, BENTO_STAGGER)}>
               <h2 id="bento-now" className="font-grotesk text-xs font-semibold uppercase tracking-[0.16em] text-zinc-700">
                 {current ? "Currently" : "Most recently"}
               </h2>
@@ -171,7 +177,7 @@ export function TemplateBento({
 
           {/* Contact */}
           {(data.email || socials.length > 0) && (
-            <section id="contact" aria-labelledby="bento-contact" className={`${TILE_LIGHT} sm:col-span-2 scroll-mt-24`}>
+            <section id="contact" aria-labelledby="bento-contact" className={`${TILE_LIGHT} sm:col-span-2 scroll-mt-24`} {...motion.item(1, BENTO_STAGGER)}>
               <h2 id="bento-contact" className={TILE_LABEL}>
                 Contact
               </h2>
@@ -203,9 +209,11 @@ export function TemplateBento({
               aria-labelledby="bento-featured"
               data-testid="bento-tile-featured"
               className="relative rounded-3xl overflow-hidden min-w-0 sm:col-span-2 lg:row-span-2 bg-zinc-900 text-white flex flex-col justify-end min-h-[320px] scroll-mt-24"
+              {...motion.item()}
+              {...motion.card()}
             >
               {featured.imageUrl && (
-                <img src={featured.imageUrl} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-45" />
+                <img src={featured.imageUrl} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-45" {...motion.media()} />
               )}
               <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
               <div className="relative p-6 sm:p-8">
@@ -242,8 +250,8 @@ export function TemplateBento({
           )}
 
           {/* Compact project tiles */}
-          {sideProjects.map((project) => (
-            <article key={project.id} data-testid="bento-tile-project" className={`${TILE_LIGHT} flex flex-col`}>
+          {sideProjects.map((project, index) => (
+            <article key={project.id} data-testid="bento-tile-project" className={`${TILE_LIGHT} flex flex-col`} {...motion.item(index, 2)} {...motion.card()}>
               <span aria-hidden="true" className="w-9 h-9 rounded-xl bg-zinc-100 font-grotesk text-sm font-bold flex items-center justify-center">
                 {getInitials(project.title)}
               </span>
@@ -266,7 +274,7 @@ export function TemplateBento({
           ))}
 
           {moreProjects.length > 0 && (
-            <section aria-labelledby="bento-more-projects" className={`${TILE_LIGHT} sm:col-span-2 lg:col-span-4`}>
+            <section aria-labelledby="bento-more-projects" className={`${TILE_LIGHT} sm:col-span-2 lg:col-span-4`} {...motion.item()}>
               <h2 id="bento-more-projects" className={TILE_LABEL}>
                 More projects
               </h2>
@@ -282,7 +290,7 @@ export function TemplateBento({
 
           {/* Skills */}
           {skillGroups.length > 0 && (
-            <section id="skills" aria-labelledby="bento-skills" data-testid="bento-tile-skills" className={`${TILE_LIGHT} sm:col-span-2 scroll-mt-24`}>
+            <section id="skills" aria-labelledby="bento-skills" data-testid="bento-tile-skills" className={`${TILE_LIGHT} sm:col-span-2 scroll-mt-24`} {...motion.item()}>
               <h2 id="bento-skills" className={TILE_LABEL}>
                 Skills
               </h2>
@@ -305,7 +313,7 @@ export function TemplateBento({
 
           {/* Experience */}
           {experiences.length > 0 && (
-            <section id="experience" aria-labelledby="bento-experience" className={`${TILE_LIGHT} sm:col-span-2 scroll-mt-24`}>
+            <section id="experience" aria-labelledby="bento-experience" className={`${TILE_LIGHT} sm:col-span-2 scroll-mt-24`} {...motion.item(1, BENTO_STAGGER)}>
               <h2 id="bento-experience" className={TILE_LABEL}>
                 Experience
               </h2>

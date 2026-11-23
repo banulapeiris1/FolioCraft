@@ -3,6 +3,7 @@ import { PortfolioFormData, PortfolioTemplateId, SocialLinks } from "@/types/por
 import { Project } from "@/types/project";
 import { Skill } from "@/types/skill";
 import { Experience } from "@/types/experience";
+import { normalizeAnimationStyle, type AnimationStyle } from "./motion/motionConfig";
 
 // Re-export PortfolioTemplateId for direct access from the templates module
 export type { PortfolioTemplateId };
@@ -35,6 +36,12 @@ export interface PortfolioViewData {
 
   // Template Theme
   template?: PortfolioTemplateId | string | null;
+
+  /**
+   * Phase 14 animation style ("subtle" | "creative" | "minimal").
+   * Optional: missing or unknown values resolve to "subtle".
+   */
+  animationStyle?: AnimationStyle | string | null;
 }
 
 /**
@@ -118,6 +125,7 @@ export function mapDraftToPortfolioViewData(
     skills: Array.isArray(safeCollections.skills) ? safeCollections.skills : [],
     experiences: Array.isArray(safeCollections.experiences) ? safeCollections.experiences : [],
     template: safeDraft.template || "modern",
+    animationStyle: normalizeAnimationStyle(safeDraft.animationStyle),
   };
 }
 

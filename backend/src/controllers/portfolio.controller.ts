@@ -167,6 +167,7 @@ export class PortfolioController {
         "socialLinks",
         "username",
         "template",
+        "animationStyle",
       ];
 
       const providedKeys = Object.keys(req.body).filter((k) =>

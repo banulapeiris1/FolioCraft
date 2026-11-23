@@ -9,6 +9,10 @@ import {
   sortProjects,
 } from "../site/siteModel";
 import { ExternalLink } from "../shared/ExternalLink";
+import { getTemplateMotion, heroItemProps } from "../motion/motionConfig";
+
+// Readable CV: whole sections fade in; capped at "subtle" by resolveMotionMode.
+const motion = getTemplateMotion("academic");
 
 /**
  * Academic CV — curriculum-vitae style portfolio (Phase 13).
@@ -43,6 +47,7 @@ function CvSection({
       aria-labelledby={`${id}-heading`}
       data-testid={testId}
       className="grid grid-cols-1 sm:grid-cols-[10rem_minmax(0,1fr)] md:grid-cols-[12rem_minmax(0,1fr)] gap-2 sm:gap-8 py-8 border-t border-[#e6e1d8] scroll-mt-20"
+      {...motion.section()}
     >
       <h2
         id={`${id}-heading`}
@@ -101,7 +106,7 @@ export function TemplateAcademic({
   return (
     <div
       data-testid="template-academic"
-      className={`template-academic min-h-screen bg-[#fdfcf9] text-[#2a2522] font-text-serif selection:bg-[#7a1f2b]/15 overflow-x-hidden ${className}`}
+      className={`template-academic min-h-screen bg-[#fdfcf9] text-[#2a2522] font-text-serif selection:bg-[#7a1f2b]/15 overflow-x-clip ${className}`}
     >
       {siteNav ??
         (anchors.length > 0 && (
@@ -126,14 +131,16 @@ export function TemplateAcademic({
               src={data.profileImageUrl}
               alt={`${name}'s profile photo`}
               className="mx-auto mb-6 w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border border-[#e6e1d8]"
+              {...heroItemProps(0)}
             />
           )}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-[#1d1917] break-words">{name}</h1>
-          {data.title && <p className="mt-2 text-lg sm:text-xl italic text-[#5c534d] break-words">{data.title}</p>}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-[#1d1917] break-words" {...heroItemProps(1)}>{name}</h1>
+          {data.title && <p className="mt-2 text-lg sm:text-xl italic text-[#5c534d] break-words" {...heroItemProps(2)}>{data.title}</p>}
           {contactItems.length > 0 && (
             <address
               data-testid="academic-contact-line"
               className="not-italic mt-5 flex flex-wrap justify-center items-center gap-x-2 gap-y-1 text-sm text-[#5c534d]"
+              {...heroItemProps(3)}
             >
               {contactItems.map((item, index) => (
                 <React.Fragment key={index}>

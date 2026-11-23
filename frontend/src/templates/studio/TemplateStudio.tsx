@@ -11,6 +11,9 @@ import {
 } from "../site/siteModel";
 import { ExternalLink } from "../shared/ExternalLink";
 import { ArrowRightIcon } from "@/components/portfolio/PortfolioIcons";
+import { getTemplateMotion, heroItemProps, revealProps } from "../motion/motionConfig";
+
+const motion = getTemplateMotion("studio");
 
 /**
  * Creative Studio — agency-style portfolio (Phase 13).
@@ -49,7 +52,7 @@ export function TemplateStudio({
   return (
     <div
       data-testid="template-studio"
-      className={`template-studio @container min-h-screen bg-[#111111] text-[#f2efe8] font-grotesk selection:bg-[#ff5b1f] selection:text-[#111111] overflow-x-hidden ${className}`}
+      className={`template-studio @container min-h-screen bg-[#111111] text-[#f2efe8] font-grotesk selection:bg-[#ff5b1f] selection:text-[#111111] overflow-x-clip ${className}`}
     >
       {siteNav ?? (
         <nav aria-label="Studio Navigation" className="border-b border-white/10">
@@ -84,18 +87,18 @@ export function TemplateStudio({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-end">
             <div className={`min-w-0 ${data.profileImageUrl ? "lg:col-span-8" : "lg:col-span-12"}`}>
               {data.title && (
-                <p className="mb-6 inline-flex items-center gap-3 text-sm sm:text-base font-medium text-[#ff5b1f] break-words">
+                <p className="mb-6 inline-flex items-center gap-3 text-sm sm:text-base font-medium text-[#ff5b1f] break-words" {...heroItemProps(0)}>
                   <span aria-hidden="true" className="w-8 h-px bg-[#ff5b1f] flex-shrink-0" />
                   {data.title}
                 </p>
               )}
-              <h1 className="font-bold uppercase tracking-tighter leading-[0.85] text-5xl @md:text-6xl @2xl:text-8xl @5xl:text-[8.5rem] break-words">
+              <h1 className="font-bold uppercase tracking-tighter leading-[0.85] text-5xl @md:text-6xl @2xl:text-8xl @5xl:text-[8.5rem] break-words" {...heroItemProps(1)}>
                 {name}
               </h1>
-              {data.location && <p className="mt-6 text-sm uppercase tracking-[0.2em] text-white/50 break-words">Based in {data.location}</p>}
+              {data.location && <p className="mt-6 text-sm uppercase tracking-[0.2em] text-white/50 break-words" {...heroItemProps(2)}>Based in {data.location}</p>}
             </div>
             {data.profileImageUrl && (
-              <div className="lg:col-span-4 min-w-0 flex lg:justify-end">
+              <div className="lg:col-span-4 min-w-0 flex lg:justify-end" {...heroItemProps(2)}>
                 <div className="relative w-56 sm:w-64 lg:w-full max-w-xs">
                   <div aria-hidden="true" className="absolute inset-0 translate-x-4 translate-y-4 bg-[#ff5b1f]" />
                   <img
@@ -108,7 +111,7 @@ export function TemplateStudio({
             )}
           </div>
           {data.about && (
-            <p className="mt-12 sm:mt-16 max-w-3xl text-lg sm:text-2xl leading-snug text-white/80 whitespace-pre-line break-words">{data.about}</p>
+            <p className="mt-12 sm:mt-16 max-w-3xl text-lg sm:text-2xl leading-snug text-white/80 whitespace-pre-line break-words" {...heroItemProps(3)}>{data.about}</p>
           )}
         </header>
 
@@ -132,8 +135,8 @@ export function TemplateStudio({
 
         {/* Work */}
         {projects.length > 0 && (
-          <section id="work" aria-labelledby="studio-work" className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-28 scroll-mt-20">
-            <div className="flex items-end justify-between gap-6 mb-14 sm:mb-20">
+          <section id="work" aria-labelledby="studio-work" className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-28 scroll-mt-20" {...motion.section()}>
+            <div className="flex items-end justify-between gap-6 mb-14 sm:mb-20" {...motion.heading()}>
               <h2 id="studio-work" className="text-5xl @2xl:text-7xl font-bold uppercase tracking-tighter leading-none">
                 Selected<br />
                 <span className="text-[#ff5b1f]">Work</span>
@@ -144,14 +147,14 @@ export function TemplateStudio({
               {projects.map((project, index) => {
                 const flipped = index % 2 === 1;
                 return (
-                  <li key={project.id} data-testid="studio-showcase" className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-center">
+                  <li key={project.id} data-testid="studio-showcase" className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-center" {...motion.item()}>
                     <div className={`md:col-span-7 min-w-0 ${flipped ? "md:order-last" : ""}`}>
                       <div className="relative">
                         <div aria-hidden="true" className={`absolute inset-0 ${flipped ? "-translate-x-3" : "translate-x-3"} translate-y-3 border-2 border-[#ff5b1f]`} />
                         {project.imageUrl ? (
-                          <img src={project.imageUrl} alt={`Screenshot of ${project.title}`} loading="lazy" className="relative w-full aspect-[16/10] object-cover" />
+                          <img src={project.imageUrl} alt={`Screenshot of ${project.title}`} loading="lazy" className="relative w-full aspect-[16/10] object-cover" {...motion.card()} />
                         ) : (
-                          <div aria-hidden="true" className="relative w-full aspect-[16/10] bg-[#f2efe8] text-[#111111] flex items-center justify-center">
+                          <div aria-hidden="true" className="relative w-full aspect-[16/10] bg-[#f2efe8] text-[#111111] flex items-center justify-center" {...motion.card()}>
                             <span className="text-7xl sm:text-9xl font-bold tracking-tighter">{getInitials(project.title)}</span>
                           </div>
                         )}
@@ -194,14 +197,14 @@ export function TemplateStudio({
 
         {/* Capabilities */}
         {skillGroups.length > 0 && (
-          <section id="capabilities" aria-labelledby="studio-capabilities" className="bg-[#f2efe8] text-[#111111] scroll-mt-20">
+          <section id="capabilities" aria-labelledby="studio-capabilities" className="bg-[#f2efe8] text-[#111111] scroll-mt-20" {...motion.section()}>
             <div className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-24 grid grid-cols-1 lg:grid-cols-12 gap-10">
-              <h2 id="studio-capabilities" className="lg:col-span-4 text-5xl @2xl:text-6xl font-bold uppercase tracking-tighter leading-none">
+              <h2 id="studio-capabilities" className="lg:col-span-4 text-5xl @2xl:text-6xl font-bold uppercase tracking-tighter leading-none" {...motion.heading()}>
                 Capa&shy;bilities
               </h2>
               <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-10">
-                {skillGroups.map(([category, skills]) => (
-                  <div key={category} className="min-w-0 border-t-4 border-[#111111] pt-4">
+                {skillGroups.map(([category, skills], index) => (
+                  <div key={category} className="min-w-0 border-t-4 border-[#111111] pt-4" {...motion.item(index, 2)}>
                     <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-[#c2410c]">{category}</h3>
                     <ul className="mt-4 space-y-1.5">
                       {skills.map((skill) => (
@@ -219,13 +222,13 @@ export function TemplateStudio({
 
         {/* Track record */}
         {experiences.length > 0 && (
-          <section id="record" aria-labelledby="studio-record" className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-28 scroll-mt-20">
-            <h2 id="studio-record" className="mb-12 text-5xl @2xl:text-7xl font-bold uppercase tracking-tighter leading-none">
+          <section id="record" aria-labelledby="studio-record" className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-28 scroll-mt-20" {...motion.section()}>
+            <h2 id="studio-record" className="mb-12 text-5xl @2xl:text-7xl font-bold uppercase tracking-tighter leading-none" {...motion.heading()}>
               Track <span className="text-[#ff5b1f]">Record</span>
             </h2>
             <ol className="border-t border-white/15">
               {experiences.map((exp) => (
-                <li key={exp.id} className="group grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-8 py-8 border-b border-white/15 hover:bg-[#ff5b1f] hover:text-[#111111] transition-colors md:px-4">
+                <li key={exp.id} className="group grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-8 py-8 border-b border-white/15 hover:bg-[#ff5b1f] hover:text-[#111111] transition-colors md:px-4" {...motion.item()}>
                   <p className="md:col-span-3 text-sm uppercase tracking-wider text-white/50 group-hover:text-[#111111]/70">
                     {formatDateRange(exp.startDate, exp.endDate, exp.isCurrent)}
                   </p>
@@ -252,7 +255,7 @@ export function TemplateStudio({
       {/* Contact CTA + footer */}
       <footer className="border-t border-white/10">
         {(data.email || socials.length > 0) && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-28">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-28" {...revealProps()}>
             <p className="text-sm uppercase tracking-[0.2em] text-white/50">Have a project in mind?</p>
             {data.email ? (
               <a href={`mailto:${data.email}`} className={`mt-4 inline-block text-3xl @md:text-4xl @2xl:text-6xl @5xl:text-7xl font-bold tracking-tighter hover:text-[#ff5b1f] transition-colors break-all rounded-sm ${FOCUS}`}>

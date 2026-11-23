@@ -9,6 +9,7 @@ import {
   sortProjects,
 } from "../site/siteModel";
 import { ExternalLink } from "../shared/ExternalLink";
+import { getTemplateMotion, heroItemProps } from "../motion/motionConfig";
 
 /**
  * Editorial — magazine-style portfolio (Phase 13).
@@ -23,9 +24,11 @@ const FOCUS =
 
 const PULL_QUOTE_MIN_LENGTH = 280;
 
+const motion = getTemplateMotion("editorial");
+
 function SectionOpener({ number, id, children }: { number: string; id: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-baseline gap-4 sm:gap-6 border-t-2 border-[#1c1917] pt-4 mb-8 sm:mb-12">
+    <div className="flex items-baseline gap-4 sm:gap-6 border-t-2 border-[#1c1917] pt-4 mb-8 sm:mb-12" {...motion.heading()}>
       <span aria-hidden="true" className="font-display-serif text-sm sm:text-base italic text-[#8a2c0d]">
         {number}
       </span>
@@ -74,14 +77,14 @@ export function TemplateEditorial({
   return (
     <div
       data-testid="template-editorial"
-      className={`template-editorial @container min-h-screen bg-[#f6f1e7] text-[#1c1917] font-text-serif selection:bg-[#8a2c0d] selection:text-[#f6f1e7] overflow-x-hidden ${className}`}
+      className={`template-editorial @container min-h-screen bg-[#f6f1e7] text-[#1c1917] font-text-serif selection:bg-[#8a2c0d] selection:text-[#f6f1e7] overflow-x-clip ${className}`}
     >
       {siteNav}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-8">
         {/* Masthead */}
         <header className="pt-8 sm:pt-12">
-          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-y border-[#1c1917] py-2 text-[11px] sm:text-xs font-sans uppercase tracking-[0.2em]">
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-y border-[#1c1917] py-2 text-[11px] sm:text-xs font-sans uppercase tracking-[0.2em]" {...heroItemProps(0)}>
             <span>Portfolio</span>
             {data.location && <span className="hidden sm:inline break-words">{data.location}</span>}
             <span>{year}</span>
@@ -103,17 +106,17 @@ export function TemplateEditorial({
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10 py-12 sm:py-16 md:py-20 items-end">
             <div className={`min-w-0 ${data.profileImageUrl ? "md:col-span-8" : "md:col-span-12"}`}>
-              <h1 className="font-display-serif font-semibold tracking-tight leading-[0.92] text-5xl @2xl:text-7xl @5xl:text-8xl break-words">
+              <h1 className="font-display-serif font-semibold tracking-tight leading-[0.92] text-5xl @2xl:text-7xl @5xl:text-8xl break-words" {...heroItemProps(1)}>
                 {name}
               </h1>
               {data.title && (
-                <p className="mt-6 font-display-serif italic text-xl sm:text-2xl md:text-3xl text-[#57534e] break-words">
+                <p className="mt-6 font-display-serif italic text-xl sm:text-2xl md:text-3xl text-[#57534e] break-words" {...heroItemProps(2)}>
                   {data.title}
                 </p>
               )}
             </div>
             {data.profileImageUrl && (
-              <figure className="md:col-span-4 min-w-0">
+              <figure className="md:col-span-4 min-w-0" {...heroItemProps(2)}>
                 <img
                   src={data.profileImageUrl}
                   alt={`${name}'s profile photo`}
@@ -130,11 +133,11 @@ export function TemplateEditorial({
         <Main id={siteNav ? undefined : "main-content"} className="pb-16 sm:pb-24 space-y-20 sm:space-y-28">
           {/* Introduction */}
           {about && (
-            <section id="about" aria-labelledby="editorial-about-heading" className="scroll-mt-20">
+            <section id="about" aria-labelledby="editorial-about-heading" className="scroll-mt-20" {...motion.section()}>
               <SectionOpener number={numberOf("about")} id="editorial-about-heading">
                 Introduction
               </SectionOpener>
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10" {...motion.item()}>
                 <p
                   data-testid="editorial-intro"
                   className={`${pullQuote ? "lg:col-span-8" : "lg:col-span-12"} md:columns-2 gap-10 text-base sm:text-lg leading-relaxed whitespace-pre-line break-words first-letter:float-left first-letter:font-display-serif first-letter:text-7xl first-letter:leading-[0.8] first-letter:mr-3 first-letter:mt-1 first-letter:text-[#8a2c0d]`}
@@ -152,7 +155,7 @@ export function TemplateEditorial({
 
           {/* Selected Work — ruled contents index */}
           {projects.length > 0 && (
-            <section id="work" aria-labelledby="editorial-work-heading" className="scroll-mt-20">
+            <section id="work" aria-labelledby="editorial-work-heading" className="scroll-mt-20" {...motion.section()}>
               <SectionOpener number={numberOf("work")} id="editorial-work-heading">
                 Selected Work
               </SectionOpener>
@@ -162,6 +165,7 @@ export function TemplateEditorial({
                     key={project.id}
                     data-testid="editorial-work-item"
                     className="grid grid-cols-12 gap-4 sm:gap-8 py-8 sm:py-10"
+                    {...motion.item()}
                   >
                     <span
                       aria-hidden="true"
@@ -218,13 +222,13 @@ export function TemplateEditorial({
 
           {/* Career */}
           {experiences.length > 0 && (
-            <section id="experience" aria-labelledby="editorial-experience-heading" className="scroll-mt-20">
+            <section id="experience" aria-labelledby="editorial-experience-heading" className="scroll-mt-20" {...motion.section()}>
               <SectionOpener number={numberOf("experience")} id="editorial-experience-heading">
                 Career
               </SectionOpener>
               <div className="space-y-10">
                 {experiences.map((exp) => (
-                  <article key={exp.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-8">
+                  <article key={exp.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-8" {...motion.item()}>
                     <p className="sm:col-span-3 font-sans text-xs uppercase tracking-[0.16em] text-[#57534e] pt-2">
                       {formatDateRange(exp.startDate, exp.endDate, exp.isCurrent)}
                     </p>
@@ -249,13 +253,13 @@ export function TemplateEditorial({
 
           {/* Expertise */}
           {skillGroups.length > 0 && (
-            <section id="skills" aria-labelledby="editorial-skills-heading" className="scroll-mt-20">
+            <section id="skills" aria-labelledby="editorial-skills-heading" className="scroll-mt-20" {...motion.section()}>
               <SectionOpener number={numberOf("skills")} id="editorial-skills-heading">
                 Expertise
               </SectionOpener>
               <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                {skillGroups.map(([category, skills]) => (
-                  <div key={category} className="min-w-0 border-t border-[#1c1917]/25 pt-4">
+                {skillGroups.map(([category, skills], index) => (
+                  <div key={category} className="min-w-0 border-t border-[#1c1917]/25 pt-4" {...motion.item(index, 2)}>
                     <dt className="font-sans text-xs uppercase tracking-[0.18em] text-[#8a2c0d]">{category}</dt>
                     <dd className="mt-2 font-display-serif text-xl sm:text-2xl leading-snug break-words">
                       {skills.map((skill) => skill.name).join(" / ")}

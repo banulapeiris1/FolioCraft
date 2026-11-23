@@ -11,6 +11,7 @@ import {
   sortProjects,
 } from "../site/siteModel";
 import { ExternalLink } from "../shared/ExternalLink";
+import { getTemplateMotion, heroItemProps, revealProps } from "../motion/motionConfig";
 import {
   ExternalLinkIcon,
   FileTextIcon,
@@ -19,6 +20,8 @@ import {
   MailIcon,
   MapPinIcon,
 } from "@/components/portfolio/PortfolioIcons";
+
+const motion = getTemplateMotion("showcase");
 
 /**
  * Project Showcase — project-first portfolio (Phase 13).
@@ -99,7 +102,7 @@ export function TemplateShowcase({
   return (
     <div
       data-testid="template-showcase"
-      className={`template-showcase min-h-screen bg-[#f6f8fa] text-slate-800 font-sans selection:bg-indigo-200 selection:text-indigo-950 overflow-x-hidden ${className}`}
+      className={`template-showcase min-h-screen bg-[#f6f8fa] text-slate-800 font-sans selection:bg-indigo-200 selection:text-indigo-950 overflow-x-clip ${className}`}
     >
       {siteNav ?? (
         <nav aria-label="Project Showcase Navigation" className="bg-white border-b border-slate-200">
@@ -132,16 +135,16 @@ export function TemplateShowcase({
         {/* Owner strip */}
         <header id="overview" className="flex flex-col sm:flex-row sm:items-center gap-5 scroll-mt-20">
           {data.profileImageUrl ? (
-            <img src={data.profileImageUrl} alt={`${name}'s profile photo`} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border border-slate-200 flex-shrink-0" />
+            <img src={data.profileImageUrl} alt={`${name}'s profile photo`} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border border-slate-200 flex-shrink-0" {...heroItemProps(0)} />
           ) : (
-            <span aria-hidden="true" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-indigo-600 text-white font-mono text-xl font-bold flex items-center justify-center flex-shrink-0">
+            <span aria-hidden="true" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-indigo-600 text-white font-mono text-xl font-bold flex items-center justify-center flex-shrink-0" {...heroItemProps(0)}>
               {getInitials(data.name)}
             </span>
           )}
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 break-words">{name}</h1>
-            {data.title && <p className="mt-1 text-base sm:text-lg text-slate-600 break-words">{data.title}</p>}
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 break-words" {...heroItemProps(1)}>{name}</h1>
+            {data.title && <p className="mt-1 text-base sm:text-lg text-slate-600 break-words" {...heroItemProps(2)}>{data.title}</p>}
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500" {...heroItemProps(3)}>
               {data.location && (
                 <span className="inline-flex items-center gap-1.5">
                   <MapPinIcon className="w-4 h-4 flex-shrink-0" />
@@ -170,14 +173,14 @@ export function TemplateShowcase({
 
         {/* Spotlight */}
         {spotlight && (
-          <section id="projects" aria-labelledby="showcase-spotlight" data-testid="showcase-spotlight" className="scroll-mt-20">
-            <h2 id="showcase-spotlight" className="mb-4 font-mono text-xs font-semibold uppercase tracking-wider text-indigo-600">
+          <section id="projects" aria-labelledby="showcase-spotlight" data-testid="showcase-spotlight" className="scroll-mt-20" {...motion.section()}>
+            <h2 id="showcase-spotlight" className="mb-4 font-mono text-xs font-semibold uppercase tracking-wider text-indigo-600" {...motion.heading()}>
               ★ Featured project
             </h2>
-            <article className="grid grid-cols-1 lg:grid-cols-5 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="lg:col-span-3 aspect-video lg:aspect-auto lg:min-h-[340px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-500 relative">
+            <article className="grid grid-cols-1 lg:grid-cols-5 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm" {...motion.item()} {...motion.card()}>
+              <div className="lg:col-span-3 aspect-video lg:aspect-auto lg:min-h-[340px] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-500 relative overflow-hidden">
                 {spotlight.imageUrl ? (
-                  <img src={spotlight.imageUrl} alt={`Screenshot of ${spotlight.title}`} className="absolute inset-0 w-full h-full object-cover" />
+                  <img src={spotlight.imageUrl} alt={`Screenshot of ${spotlight.title}`} className="absolute inset-0 w-full h-full object-cover" {...motion.media()} />
                 ) : (
                   <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center font-mono text-6xl sm:text-7xl font-bold text-white/90">
                     {getInitials(spotlight.title)}
@@ -211,13 +214,13 @@ export function TemplateShowcase({
 
         {/* Repo gallery */}
         {gallery.length > 0 && (
-          <section id="more-projects" aria-labelledby="showcase-gallery" className="scroll-mt-20">
-            <h2 id="showcase-gallery" className="mb-4 text-lg font-bold text-slate-900">
+          <section id="more-projects" aria-labelledby="showcase-gallery" className="scroll-mt-20" {...motion.section()}>
+            <h2 id="showcase-gallery" className="mb-4 text-lg font-bold text-slate-900" {...motion.heading()}>
               More projects <span className="font-mono text-sm font-normal text-slate-400">({gallery.length})</span>
             </h2>
             <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {gallery.map((project) => (
-                <li key={project.id} data-testid="showcase-repo-card" className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col min-w-0 hover:border-indigo-300 transition-colors">
+              {gallery.map((project, index) => (
+                <li key={project.id} data-testid="showcase-repo-card" className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col min-w-0 hover:border-indigo-300 transition-colors" {...motion.item(index, 3)} {...motion.card()}>
                   <div className="flex items-start gap-2.5">
                     <FolderGit2Icon className="w-4 h-4 mt-1 text-slate-400 flex-shrink-0" />
                     <h3 className="font-semibold text-indigo-700 break-words">
@@ -249,7 +252,7 @@ export function TemplateShowcase({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* README */}
           {(data.about || skillGroups.length > 0) && (
-            <section aria-labelledby="showcase-readme" data-testid="showcase-readme" className="lg:col-span-2 bg-white border border-slate-200 rounded-xl overflow-hidden min-w-0">
+            <section aria-labelledby="showcase-readme" data-testid="showcase-readme" className="lg:col-span-2 bg-white border border-slate-200 rounded-xl overflow-hidden min-w-0" {...revealProps()}>
               <h2 id="showcase-readme" className="flex items-center gap-2 px-5 py-3 border-b border-slate-200 bg-slate-50 font-mono text-sm font-semibold text-slate-700">
                 <FileTextIcon className="w-4 h-4 text-slate-400" />
                 README.md
@@ -277,7 +280,7 @@ export function TemplateShowcase({
 
           {/* Built with index */}
           {techIndex.length > 0 && (
-            <section id="stack" aria-labelledby="showcase-stack" data-testid="showcase-tech-index" className="min-w-0 scroll-mt-20">
+            <section id="stack" aria-labelledby="showcase-stack" data-testid="showcase-tech-index" className="min-w-0 scroll-mt-20" {...revealProps(1)}>
               <h2 id="showcase-stack" className="mb-4 text-lg font-bold text-slate-900">
                 Built with
               </h2>
@@ -310,13 +313,13 @@ export function TemplateShowcase({
 
         {/* Commit-log history */}
         {experiences.length > 0 && (
-          <section id="history" aria-labelledby="showcase-history" className="scroll-mt-20">
-            <h2 id="showcase-history" className="mb-4 text-lg font-bold text-slate-900">
+          <section id="history" aria-labelledby="showcase-history" className="scroll-mt-20" {...motion.section()}>
+            <h2 id="showcase-history" className="mb-4 text-lg font-bold text-slate-900" {...motion.heading()}>
               Contribution history
             </h2>
             <ol className="relative border-l-2 border-slate-200 ml-2 space-y-6">
               {experiences.map((exp) => (
-                <li key={exp.id} className="relative pl-6 min-w-0">
+                <li key={exp.id} className="relative pl-6 min-w-0" {...motion.item()}>
                   <span aria-hidden="true" className={`absolute -left-[7px] top-1.5 w-3 h-3 rounded-full ring-4 ring-[#f6f8fa] ${exp.isCurrent ? "bg-indigo-500" : "bg-slate-400"}`} />
                   <p className="font-mono text-xs text-slate-500">{formatDateRange(exp.startDate, exp.endDate, exp.isCurrent)}</p>
                   <h3 className="mt-1 font-semibold text-slate-900 break-words">

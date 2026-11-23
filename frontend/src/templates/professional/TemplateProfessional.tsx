@@ -1,6 +1,7 @@
 import React from "react";
 import { TemplateProps } from "../types";
 import { ProjectTitleLink } from "../site/ProjectTitleLink";
+import { getTemplateMotion, heroItemProps, revealProps } from "../motion/motionConfig";
 import {
   MapPinIcon,
   MailIcon,
@@ -10,6 +11,8 @@ import {
   ExternalLinkIcon,
   BriefcaseIcon,
 } from "@/components/portfolio/PortfolioIcons";
+
+const motion = getTemplateMotion("professional");
 
 /**
  * Social media icons for LinkedIn and Twitter/X
@@ -227,11 +230,11 @@ export function TemplateProfessional({
         >
           <div className="flex flex-col-reverse md:flex-row md:items-start md:justify-between gap-8">
             <div className="space-y-4 flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md text-xs font-semibold tracking-wide uppercase bg-blue-50 text-blue-900 border border-blue-100">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md text-xs font-semibold tracking-wide uppercase bg-blue-50 text-blue-900 border border-blue-100" {...heroItemProps(0)}>
                 <span>Executive Profile</span>
               </div>
 
-              <div>
+              <div {...heroItemProps(1)}>
                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 tracking-tight break-words">
                   {data.name || "Professional Portfolio"}
                 </h1>
@@ -244,20 +247,20 @@ export function TemplateProfessional({
               </div>
 
               {data.location && (
-                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500" {...heroItemProps(2)}>
                   <MapPinIcon className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   <span className="break-words">{data.location}</span>
                 </div>
               )}
 
               {data.about && (
-                <p className="text-slate-600 text-sm sm:text-base leading-relaxed whitespace-pre-line pt-2 max-w-2xl border-t border-slate-100 break-words">
+                <p className="text-slate-600 text-sm sm:text-base leading-relaxed whitespace-pre-line pt-2 max-w-2xl border-t border-slate-100 break-words" {...heroItemProps(3)}>
                   {data.about}
                 </p>
               )}
 
               {/* Contact Info & Social Connections */}
-              <address className="not-italic pt-4 flex flex-wrap items-center gap-y-2.5 gap-x-4 text-xs font-medium text-slate-600">
+              <address className="not-italic pt-4 flex flex-wrap items-center gap-y-2.5 gap-x-4 text-xs font-medium text-slate-600" {...heroItemProps(4)}>
                 {data.email && (
                   <a
                     href={`mailto:${data.email}`}
@@ -296,7 +299,7 @@ export function TemplateProfessional({
 
             {/* Profile Avatar (only rendered if provided) */}
             {data.profileImageUrl && (
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0" {...heroItemProps(1)}>
                 <img
                   src={data.profileImageUrl}
                   alt={data.name ? `${data.name}'s portrait` : "Executive portrait"}
@@ -311,8 +314,8 @@ export function TemplateProfessional({
         {/* 3. Professional Experience Section */}
         {/* ========================================================= */}
         {sortedExperiences.length > 0 && (
-          <section id="experience" aria-labelledby="section-experience-heading" className="scroll-mt-20">
-            <div className="flex items-center gap-3 mb-6 pb-2 border-b border-slate-200">
+          <section id="experience" aria-labelledby="section-experience-heading" className="scroll-mt-20" {...motion.section()}>
+            <div className="flex items-center gap-3 mb-6 pb-2 border-b border-slate-200" {...motion.heading()}>
               <div className="w-1.5 h-6 bg-blue-900 rounded-full" />
               <h2
                 id="section-experience-heading"
@@ -327,6 +330,7 @@ export function TemplateProfessional({
                 <article
                   key={exp.id}
                   className="bg-white border border-slate-200 border-l-4 border-l-blue-900 rounded-xl p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-shadow"
+                  {...motion.item()}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1.5 mb-2">
                     <div>
@@ -365,8 +369,8 @@ export function TemplateProfessional({
         {/* 4. Key Projects Section */}
         {/* ========================================================= */}
         {sortedProjects.length > 0 && (
-          <section id="projects" aria-labelledby="section-projects-heading" className="scroll-mt-20">
-            <div className="flex items-center gap-3 mb-6 pb-2 border-b border-slate-200">
+          <section id="projects" aria-labelledby="section-projects-heading" className="scroll-mt-20" {...motion.section()}>
+            <div className="flex items-center gap-3 mb-6 pb-2 border-b border-slate-200" {...motion.heading()}>
               <div className="w-1.5 h-6 bg-blue-900 rounded-full" />
               <h2
                 id="section-projects-heading"
@@ -377,10 +381,12 @@ export function TemplateProfessional({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {sortedProjects.map((project) => (
+              {sortedProjects.map((project, index) => (
                 <article
                   key={project.id}
                   className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between"
+                  {...motion.item(index, 2)}
+                  {...motion.card()}
                 >
                   <div>
                     {project.imageUrl && (
@@ -390,6 +396,7 @@ export function TemplateProfessional({
                           alt={project.title}
                           className="w-full h-full object-cover"
                           loading="lazy"
+                          {...motion.media()}
                         />
                       </div>
                     )}
@@ -458,8 +465,8 @@ export function TemplateProfessional({
         {/* 5. Core Competencies & Skills Section */}
         {/* ========================================================= */}
         {groupedSkills.length > 0 && (
-          <section id="skills" aria-labelledby="section-skills-heading" className="scroll-mt-20">
-            <div className="flex items-center gap-3 mb-6 pb-2 border-b border-slate-200">
+          <section id="skills" aria-labelledby="section-skills-heading" className="scroll-mt-20" {...motion.section()}>
+            <div className="flex items-center gap-3 mb-6 pb-2 border-b border-slate-200" {...motion.heading()}>
               <div className="w-1.5 h-6 bg-blue-900 rounded-full" />
               <h2
                 id="section-skills-heading"
@@ -470,10 +477,11 @@ export function TemplateProfessional({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {groupedSkills.map(([category, skills]) => (
+              {groupedSkills.map(([category, skills], index) => (
                 <div
                   key={category}
                   className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-3"
+                  {...motion.item(index, 3)}
                 >
                   <h3 className="text-xs font-bold uppercase tracking-wider text-blue-900">
                     {category}
@@ -502,6 +510,7 @@ export function TemplateProfessional({
             id="contact"
             aria-labelledby="section-contact-heading"
             className="scroll-mt-20 bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 shadow-xs text-center"
+            {...revealProps()}
           >
             <h2
               id="section-contact-heading"

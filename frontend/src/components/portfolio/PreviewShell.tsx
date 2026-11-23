@@ -3,7 +3,11 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { PortfolioTemplateId } from "@/types/portfolio";
 import { PortfolioViewData } from "@/templates/types";
-import { TemplateRenderer } from "@/templates/TemplateRenderer";
+import { AnimatedTemplateRenderer } from "@/templates/TemplateRenderer";
+import { MotionRuntime } from "@/templates/motion/MotionRuntime";
+import { replayMotion } from "@/templates/motion/revealRuntime";
+import { usePrefersReducedMotion } from "@/templates/motion/usePrefersReducedMotion";
+import { MOTION_PRESETS, resolveMotionMode } from "@/templates/motion/motionConfig";
 import { TEMPLATE_LIST, getTemplateCategoryLabel, getTemplateDefinition } from "@/templates/registry";
 import {
   ColumnsIcon,
@@ -14,6 +18,7 @@ import {
   ZoomOutIcon,
   RotateCcwIcon,
   Maximize2Icon,
+  PlayIcon,
 } from "./PortfolioIcons";
 
 export type PreviewDevice = "desktop" | "tablet" | "mobile";
@@ -69,6 +74,23 @@ export function PreviewShell({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const activeTemplate = (templateId || data.template || "modern") as PortfolioTemplateId;
+
+  // Phase 14: the preview renders data.animationStyle (the unsaved editor
+  // selection), so switching styles updates it live with no remount.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const reducedMotion = usePrefersReducedMotion();
+  const motionLabel = MOTION_PRESETS[resolveMotionMode(data.animationStyle, activeTemplate)].label;
+
+  // Replays entrance + scroll reveals from the top of the preview. Touches
+  // only runtime DOM attributes: no portfolio data, no save, no remount.
+  const handleReplay = useCallback(() => {
+    const content = contentRef.current;
+    const scope = content?.querySelector<HTMLElement>("[data-motion]");
+    if (!content || !scope) return;
+    content.scrollTop = 0;
+    if (containerRef.current) containerRef.current.scrollTop = 0;
+    replayMotion(scope);
+  }, []);
 
   // Handle device change
   const handleDeviceSelect = useCallback(
@@ -314,8 +336,30 @@ export function PreviewShell({
               <Maximize2Icon className="w-3.5 h-3.5" />
             </button>
 
-            {onTemplateChange && (
-              // Phase 13: nine templates no longer fit inline, so the switcher is a
+
+            {/* Phase 14: replay entrance + scroll-reveal animations (never saves anything) */}
+            <button
+              type="button"
+              data-testid="replay-animations-btn"
+              aria-label={
+                reducedMotion
+                  ? "Replay animations (unavailable: reduced motion is on)"
+                  : `Replay ${motionLabel} animations`
+              }
+              title={
+                reducedMotion
+                  ? "Your device asks for reduced motion, so animations are not replayed."
+                  : `Replay animations (${motionLabel})`
+              }
+              disabled={reducedMotion}
+              onClick={handleReplay}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#eae6f5] bg-white text-[11px] font-semibold text-[#475569] hover:text-[#6e56cf] hover:border-[#dcd3f8] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-[#475569] disabled:hover:border-[#eae6f5] cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6e56cf] focus-visible:ring-offset-1"
+            >
+              <PlayIcon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Replay</span>
+            </button>
+
+            {onTemplateChange && (              // Phase 13: nine templates no longer fit inline, so the switcher is a
               // compact native disclosure. Options come from the registry; keyed by
               // the active template so the menu closes after a selection.
               <details
@@ -422,10 +466,12 @@ export function PreviewShell({
 
           {/* Actual Rendered Template Inside Device Frame */}
           <div
+            ref={contentRef}
             data-testid="preview-content-scrollable"
             className="flex-1 w-full overflow-y-auto bg-white"
           >
-            <TemplateRenderer templateId={activeTemplate} data={data} />
+            <AnimatedTemplateRenderer templateId={activeTemplate} data={data} />
+            <MotionRuntime />
           </div>
 
           {/* Mobile Home Indicator */}

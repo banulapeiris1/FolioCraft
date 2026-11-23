@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS portfolios (
     social_links JSONB DEFAULT '{}'::jsonb,
     username VARCHAR(255) NOT NULL UNIQUE,
     template VARCHAR(100) DEFAULT 'modern',
+    -- Phase 14: presentation-only animation preference (subtle | creative | minimal)
+    animation_style VARCHAR(20) NOT NULL DEFAULT 'subtle'
+        CHECK (animation_style IN ('subtle', 'creative', 'minimal')),
     published BOOLEAN DEFAULT false,
     published_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -47,6 +50,22 @@ ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS location VARCHAR(255);
 ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
 ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS published_at TIMESTAMP WITH TIME ZONE;
+-- Phase 14: same statements as migrations/20261123_phase14_animation_style.sql
+ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS animation_style VARCHAR(20) DEFAULT 'subtle';
+UPDATE portfolios SET animation_style = 'subtle'
+WHERE animation_style IS NULL OR animation_style NOT IN ('subtle', 'creative', 'minimal');
+ALTER TABLE portfolios ALTER COLUMN animation_style SET DEFAULT 'subtle';
+ALTER TABLE portfolios ALTER COLUMN animation_style SET NOT NULL;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'portfolios_animation_style_check'
+    ) THEN
+        ALTER TABLE portfolios
+            ADD CONSTRAINT portfolios_animation_style_check
+            CHECK (animation_style IN ('subtle', 'creative', 'minimal'));
+    END IF;
+END $$;
 
 -- Ensure UNIQUE constraint on username if not already present
 DO $$

@@ -4,6 +4,7 @@ import type { PortfolioViewData } from "@/templates/types";
 import type { Project } from "@/types/project";
 import type { Skill } from "@/types/skill";
 import type { Experience } from "@/types/experience";
+import { normalizeAnimationStyle } from "@/templates/motion/motionConfig";
 
 /**
  * Public portfolio data access for the /u/:username route family (Phase 12).
@@ -147,6 +148,8 @@ export function normalizePublicPortfolio(
     skills: normalizeList(p.skills, normalizeSkill),
     experiences: normalizeList(p.experiences, normalizeExperience),
     template: str(p.template) || "modern",
+    // Phase 14: saved style; missing/unknown values fall back to "subtle".
+    animationStyle: normalizeAnimationStyle(p.animationStyle),
   };
 }
 

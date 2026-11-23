@@ -39,6 +39,7 @@ import {
   PencilIcon,
 } from "@/components/portfolio/PortfolioIcons";
 import { PreviewShell } from "@/components/portfolio/PreviewShell";
+import { normalizeAnimationStyle } from "@/templates/motion/motionConfig";
 import PublishModal from "@/components/portfolio/PublishModal";
 
 export default function EditPortfolioPage({
@@ -129,6 +130,7 @@ export default function EditPortfolioPage({
             socialLinks: loadedPort.socialLinks || {},
             username: loadedPort.username,
             template: loadedPort.template || "modern",
+            animationStyle: normalizeAnimationStyle(loadedPort.animationStyle),
           });
         }
       } catch (err) {
@@ -173,6 +175,7 @@ export default function EditPortfolioPage({
           socialLinks: portfolio.socialLinks || {},
           username: portfolio.username,
           template: portfolio.template || "modern",
+          animationStyle: normalizeAnimationStyle(portfolio.animationStyle),
         }
       : {};
   }, [portfolio]);
@@ -254,6 +257,7 @@ export default function EditPortfolioPage({
         socialLinks: response.portfolio.socialLinks || {},
         username: response.portfolio.username,
         template: response.portfolio.template || "modern",
+        animationStyle: normalizeAnimationStyle(response.portfolio.animationStyle),
       });
       setSuccessFeedback("Changes saved successfully!");
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -488,6 +492,7 @@ export default function EditPortfolioPage({
               socialLinks: updated.socialLinks || {},
               username: updated.username,
               template: updated.template || "modern",
+              animationStyle: normalizeAnimationStyle(updated.animationStyle),
             });
             setSuccessFeedback("CV profile data has been imported into your portfolio form. Review and save your changes.");
           }}

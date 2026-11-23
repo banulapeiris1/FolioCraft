@@ -18,6 +18,8 @@ import {
   Loader2Icon,
 } from "./PortfolioIcons";
 import TemplateSelector from "./TemplateSelector";
+import AnimationStyleSelector from "./AnimationStyleSelector";
+import { normalizeAnimationStyle } from "@/templates/motion/motionConfig";
 import { checkUsernameAvailability, ApiError } from "@/lib/api";
 
 export interface PortfolioFormProps {
@@ -51,6 +53,7 @@ function getInitialFormData(initialData: Partial<PortfolioFormData> = {}): Portf
     },
     username: initialData.username || "",
     template: initialData.template || "modern",
+    animationStyle: normalizeAnimationStyle(initialData.animationStyle),
   };
 }
 
@@ -296,6 +299,7 @@ export default function PortfolioForm({
       profileImageUrl: formData.profileImageUrl?.trim() || undefined,
       socialLinks: cleanedSocialLinks,
       template: formData.template || "modern",
+      animationStyle: normalizeAnimationStyle(formData.animationStyle),
     };
 
     if (onSubmit) {
@@ -786,6 +790,34 @@ export default function PortfolioForm({
             aria-labelledby="template-selector-label"
           />
         </div>
+      </section>
+
+      {/* 6. Animation Settings Card (Phase 14) */}
+      <section
+        data-testid="animation-settings-section"
+        aria-labelledby="animation-settings-heading"
+        className="bg-white rounded-2xl border border-[#eae6f5] p-6 sm:p-8 shadow-xs"
+      >
+        <div className="flex items-center gap-2.5 pb-4 mb-6 border-b border-[#f1edf9]">
+          <div className="w-8 h-8 rounded-lg bg-[#f3f0ff] border border-[#dcd3f8] flex items-center justify-center text-[#6e56cf]">
+            <SparklesIcon className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 id="animation-settings-heading" className="text-base font-bold text-[#0f172a]">
+              Animation Settings
+            </h2>
+            <p className="text-xs text-[#64748b]">
+              How your published portfolio moves. Preview it live, then save.
+            </p>
+          </div>
+        </div>
+        <AnimationStyleSelector
+          value={formData.animationStyle}
+          templateId={formData.template}
+          onChange={(style) => handleChange("animationStyle", style)}
+          disabled={isSubmitting}
+          aria-labelledby="animation-settings-heading"
+        />
       </section>
 
       {/* Form Submission Buttons */}

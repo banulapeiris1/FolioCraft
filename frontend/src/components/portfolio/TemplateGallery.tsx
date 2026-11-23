@@ -10,7 +10,7 @@ import {
   getTemplateCategoryLabel,
   isValidTemplateId,
 } from "@/templates/registry";
-import { TemplateRenderer } from "@/templates/TemplateRenderer";
+import { AnimatedTemplateRenderer } from "@/templates/TemplateRenderer";
 import {
   CheckCircleIcon,
   EyeIcon,
@@ -85,7 +85,9 @@ export function TemplateGallery({
                 tabIndex={-1}
                 aria-hidden="true"
               >
-                <TemplateRenderer templateId={meta.id} data={portfolioData} />
+                {/* Phase 14: thumbnails are always static ("none"): no entrance,
+                    reveal or hover motion inside the scaled preview. */}
+                <AnimatedTemplateRenderer templateId={meta.id} data={portfolioData} animationStyle="none" />
               </div>
 
               {/* Bottom Subtle Gradient Fade */}

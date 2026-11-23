@@ -1,6 +1,7 @@
 import React from "react";
 import { TemplateProps } from "../types";
 import { ProjectTitleLink } from "../site/ProjectTitleLink";
+import { getTemplateMotion, heroItemProps, revealProps } from "../motion/motionConfig";
 import {
   MapPinIcon,
   MailIcon,
@@ -29,6 +30,8 @@ function TwitterIcon({ className = "w-4 h-4" }: { className?: string }) {
     </svg>
   );
 }
+
+const motion = getTemplateMotion("modern");
 
 function getSocialIcon(key: string) {
   const normalized = key.toLowerCase();
@@ -222,36 +225,36 @@ export function TemplateModern({
         <header id="about" className="scroll-mt-24">
           <div className="flex flex-col-reverse md:flex-row md:items-center md:justify-between gap-8 md:gap-12">
             <div className="space-y-4 flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono bg-emerald-950/50 border border-emerald-500/30 text-emerald-400">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono bg-emerald-950/50 border border-emerald-500/30 text-emerald-400" {...heroItemProps(0)}>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span>Available for new opportunities</span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white break-words">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white break-words" {...heroItemProps(1)}>
                 {data.name || "Developer Portfolio"}
               </h1>
 
               {data.title && (
-                <p className="text-xl sm:text-2xl font-semibold text-emerald-400 font-mono tracking-tight break-words">
+                <p className="text-xl sm:text-2xl font-semibold text-emerald-400 font-mono tracking-tight break-words" {...heroItemProps(2)}>
                   {data.title}
                 </p>
               )}
 
               {data.location && (
-                <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+                <div className="flex items-center gap-2 text-xs font-mono text-slate-400" {...heroItemProps(3)}>
                   <MapPinIcon className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                   <span className="break-words">{data.location}</span>
                 </div>
               )}
 
               {data.about && (
-                <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl whitespace-pre-line pt-2 break-words">
+                <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl whitespace-pre-line pt-2 break-words" {...heroItemProps(4)}>
                   {data.about}
                 </p>
               )}
 
               {/* Action Buttons & Social Links */}
-              <div className="pt-4 flex flex-wrap items-center gap-3">
+              <div className="pt-4 flex flex-wrap items-center gap-3" {...heroItemProps(5)}>
                 {data.email && (
                   <a
                     href={`mailto:${data.email}`}
@@ -289,7 +292,7 @@ export function TemplateModern({
 
             {/* Profile Avatar (only rendered if provided) */}
             {data.profileImageUrl && (
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0" {...heroItemProps(1)}>
                 <div className="relative">
                   <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 opacity-20 blur-md" />
                   <img
@@ -307,8 +310,8 @@ export function TemplateModern({
         {/* 3. Projects Section */}
         {/* ========================================================= */}
         {sortedProjects.length > 0 && (
-          <section id="projects" aria-labelledby="section-projects-heading" className="scroll-mt-24">
-            <div className="flex items-center gap-3 mb-8">
+          <section id="projects" aria-labelledby="section-projects-heading" className="scroll-mt-24" {...motion.section()}>
+            <div className="flex items-center gap-3 mb-8" {...motion.heading()}>
               <h2
                 id="section-projects-heading"
                 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2"
@@ -320,10 +323,12 @@ export function TemplateModern({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {sortedProjects.map((project) => (
+              {sortedProjects.map((project, index) => (
                 <article
                   key={project.id}
                   className="p-5 sm:p-6 rounded-xl bg-slate-900/60 border border-slate-850 hover:border-slate-700 transition-all flex flex-col justify-between group shadow-xs"
+                  {...motion.item(index, 2)}
+                  {...motion.card()}
                 >
                   <div>
                     {project.imageUrl && (
@@ -401,8 +406,8 @@ export function TemplateModern({
         {/* 4. Experience Section */}
         {/* ========================================================= */}
         {sortedExperiences.length > 0 && (
-          <section id="experience" aria-labelledby="section-experience-heading" className="scroll-mt-24">
-            <div className="flex items-center gap-3 mb-8">
+          <section id="experience" aria-labelledby="section-experience-heading" className="scroll-mt-24" {...motion.section()}>
+            <div className="flex items-center gap-3 mb-8" {...motion.heading()}>
               <h2
                 id="section-experience-heading"
                 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2"
@@ -415,7 +420,7 @@ export function TemplateModern({
 
             <div className="relative border-l border-slate-800 ml-3 sm:ml-4 pl-6 sm:pl-8 space-y-10">
               {sortedExperiences.map((exp) => (
-                <article key={exp.id} className="relative group">
+                <article key={exp.id} className="relative group" {...motion.item()}>
                   {/* Timeline dot */}
                   <div
                     aria-hidden="true"
@@ -455,8 +460,8 @@ export function TemplateModern({
         {/* 5. Skills Section */}
         {/* ========================================================= */}
         {groupedSkills.length > 0 && (
-          <section id="skills" aria-labelledby="section-skills-heading" className="scroll-mt-24">
-            <div className="flex items-center gap-3 mb-8">
+          <section id="skills" aria-labelledby="section-skills-heading" className="scroll-mt-24" {...motion.section()}>
+            <div className="flex items-center gap-3 mb-8" {...motion.heading()}>
               <h2
                 id="section-skills-heading"
                 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2"
@@ -468,10 +473,11 @@ export function TemplateModern({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {groupedSkills.map(([category, skills]) => (
+              {groupedSkills.map(([category, skills], index) => (
                 <div
                   key={category}
                   className="p-5 rounded-xl bg-slate-900/40 border border-slate-850 space-y-3"
+                  {...motion.item(index, 3)}
                 >
                   <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-emerald-400">
                     {category}
@@ -500,6 +506,7 @@ export function TemplateModern({
             id="contact"
             aria-labelledby="section-contact-heading"
             className="scroll-mt-24 text-center py-12 px-6 rounded-2xl bg-gradient-to-b from-slate-900/60 to-slate-950 border border-slate-800"
+            {...revealProps()}
           >
             <h2
               id="section-contact-heading"

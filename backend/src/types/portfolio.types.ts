@@ -3,6 +3,9 @@
 import type { Project } from "./project.types";
 import type { Skill } from "./skill.types";
 import type { Experience } from "./experience.types";
+import type { AnimationStyle } from "../utils/validation";
+
+export type { AnimationStyle };
 
 /**
  * Social links record mapping platform identifiers to URLs.
@@ -26,6 +29,8 @@ export interface Portfolio {
   socialLinks: SocialLinks;
   username: string;
   template: string;
+  /** Phase 14 presentation setting; always a valid style (default "subtle"). */
+  animationStyle: AnimationStyle;
   published: boolean;
   publishedAt: Date | null;
   createdAt: Date;
@@ -61,6 +66,7 @@ export interface CreatePortfolioDto {
   profileImageUrl?: string | null;
   socialLinks?: SocialLinks;
   template?: string;
+  animationStyle?: AnimationStyle;
 }
 
 /**
@@ -77,6 +83,7 @@ export interface UpdatePortfolioDto {
   profileImageUrl?: string | null;
   socialLinks?: SocialLinks;
   template?: string;
+  animationStyle?: AnimationStyle;
 }
 
 /**
@@ -103,6 +110,8 @@ export interface PublicPortfolioDto {
   socialLinks: SocialLinks;
   username: string;
   template: string;
+  /** Phase 14: saved animation style so the public site renders it. */
+  animationStyle: AnimationStyle;
   published: boolean;
   publishedAt: Date | string | null;
   projects: Project[];

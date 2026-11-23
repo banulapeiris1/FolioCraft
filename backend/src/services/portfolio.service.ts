@@ -5,6 +5,10 @@ import {
   SUPPORTED_TEMPLATES,
   findProtectedPublishingField,
   PROTECTED_PUBLISHING_FIELD_MESSAGE,
+  isAnimationStyle,
+  normalizeAnimationStyle,
+  DEFAULT_ANIMATION_STYLE,
+  ANIMATION_STYLE_ERROR_MESSAGE,
 } from "../utils/validation";
 import type {
   Portfolio,
@@ -34,6 +38,7 @@ const PORTFOLIO_COLUMNS = `
   social_links,
   username,
   template,
+  animation_style,
   published,
   published_at,
   created_at,
@@ -53,6 +58,8 @@ interface PortfolioDbRow {
   social_links: SocialLinks | null;
   username: string;
   template: string;
+  /** Nullable only while the Phase 14 migration is being rolled out. */
+  animation_style?: string | null;
   published: boolean;
   published_at: Date | null;
   created_at: Date;
@@ -79,6 +86,7 @@ function mapRowToPortfolio(row: PortfolioDbRow): Portfolio {
     socialLinks: row.social_links || {},
     username: row.username,
     template: row.template,
+    animationStyle: normalizeAnimationStyle(row.animation_style),
     published: row.published,
     publishedAt: row.published_at ? new Date(row.published_at) : null,
     createdAt: row.created_at,
@@ -142,6 +150,11 @@ export class PortfolioService {
       : null;
     const socialLinks = data.socialLinks || {};
     const template = data.template ? data.template.trim() : "modern";
+    // Phase 14: validated again here in case a caller bypasses the controller.
+    if (data.animationStyle !== undefined && !isAnimationStyle(data.animationStyle)) {
+      throw new AppError(ANIMATION_STYLE_ERROR_MESSAGE, 400);
+    }
+    const animationStyle = data.animationStyle ?? DEFAULT_ANIMATION_STYLE;
     // New portfolios always start as drafts; only POST /:id/publish publishes (D6)
     const published = false;
 
@@ -149,9 +162,10 @@ export class PortfolioService {
       const result = await pool.query<PortfolioDbRow>(
         `INSERT INTO portfolios (
            user_id, name, email, phone, location, title, about,
-           profile_image_url, social_links, username, template, published
+           profile_image_url, social_links, username, template, published,
+           animation_style
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          RETURNING ${PORTFOLIO_COLUMNS}`,
         [
           userId,
@@ -166,6 +180,7 @@ export class PortfolioService {
           normalizedUsername,
           template,
           published,
+          animationStyle,
         ]
       );
 
@@ -355,6 +370,15 @@ export class PortfolioService {
     if (data.template !== undefined) {
       updates.push(`template = $${paramIdx++}`);
       values.push(data.template.trim());
+    }
+
+    if (data.animationStyle !== undefined) {
+      // Phase 14: presentation-only; validated again in case a caller bypasses the controller.
+      if (!isAnimationStyle(data.animationStyle)) {
+        throw new AppError(ANIMATION_STYLE_ERROR_MESSAGE, 400);
+      }
+      updates.push(`animation_style = $${paramIdx++}`);
+      values.push(data.animationStyle);
     }
 
     if (updates.length === 0) {

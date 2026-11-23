@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { TemplateRenderer } from "@/templates/TemplateRenderer";
 import { SiteNav } from "@/templates/site/SiteNav";
 import { createProjectHrefResolver } from "@/templates/site/siteModel";
+import { motionScopeProps } from "@/templates/motion/MotionRoot";
 import {
   InvalidUsername,
   ServiceUnavailable,
@@ -94,7 +95,12 @@ export default async function PublicPortfolioPage({
   // Phase 12: the full single-page template stays the home page; site
   // navigation replaces its in-page anchors and project cards link to detail pages.
   return (
-    <main data-testid="public-portfolio-container" className="min-h-screen w-full">
+    // Phase 14: <main> is the motion scope; its only child stays the TemplateRenderer.
+    <main
+      data-testid="public-portfolio-container"
+      className="min-h-screen w-full"
+      {...motionScopeProps(viewData, viewData.template)}
+    >
       <TemplateRenderer
         templateId={viewData.template}
         data={viewData}

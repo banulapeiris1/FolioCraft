@@ -73,6 +73,32 @@ export const SUPPORTED_TEMPLATES = new Set([
   "academic",
 ]);
 
+/**
+ * User-selectable portfolio animation styles (Phase 14). Must stay in sync with
+ * ANIMATION_STYLES in frontend/src/templates/motion/motionConfig.ts and the
+ * portfolios_animation_style_check database constraint. The gallery-only
+ * "none" mode is internal to the frontend and is never accepted here.
+ */
+export const ANIMATION_STYLES = ["subtle", "creative", "minimal"] as const;
+export type AnimationStyle = (typeof ANIMATION_STYLES)[number];
+export const DEFAULT_ANIMATION_STYLE: AnimationStyle = "subtle";
+export const ANIMATION_STYLE_ERROR_MESSAGE = `Animation style must be one of: ${ANIMATION_STYLES.join(", ")}`;
+
+export function isAnimationStyle(value: unknown): value is AnimationStyle {
+  return typeof value === "string" && (ANIMATION_STYLES as readonly string[]).includes(value);
+}
+
+/**
+ * Read-side normalisation: a missing, null or unrecognised stored value is
+ * served as the default, so responses always carry a valid style.
+ */
+export function normalizeAnimationStyle(value: unknown): AnimationStyle {
+  return isAnimationStyle(value) ? value : DEFAULT_ANIMATION_STYLE;
+}
+
+/** Strict write-side schema: exact allowed values only (no coercion). */
+const animationStyleField = z.enum(ANIMATION_STYLES, { message: ANIMATION_STYLE_ERROR_MESSAGE });
+
 export interface UsernameValidationResult {
   isValid: boolean;
   normalizedUsername: string;
@@ -273,6 +299,8 @@ export const createPortfolioSchema = z.object({
     .trim()
     .max(50, "Template name cannot exceed 50 characters")
     .optional(),
+  // Phase 14: presentation-only setting; strict allowed values.
+  animationStyle: animationStyleField.optional(),
   // `published` intentionally absent: publishing state is managed only by the
   // dedicated publish/unpublish endpoints (PUB-06D / D6).
 });
@@ -327,6 +355,8 @@ export const updatePortfolioSchema = z.object({
     .trim()
     .max(50, "Template name cannot exceed 50 characters")
     .optional(),
+  // Phase 14: presentation-only setting; strict allowed values.
+  animationStyle: animationStyleField.optional(),
   // `published` intentionally absent: publishing state is managed only by the
   // dedicated publish/unpublish endpoints (PUB-06D / D6).
 });
